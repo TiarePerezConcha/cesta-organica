@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition
+package com.example.cestaOganicaIA
 
 import android.Manifest
 import android.os.Bundle
@@ -11,10 +11,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.huertohogardefinitiveedition.navigation.AppNav
-import com.example.huertohogardefinitiveedition.ui.theme.HuertoHogarDefinitiveEditionTheme
-import com.example.huertohogardefinitiveedition.utils.CameraPermissionHelper
-import com.example.huertohogardefinitiveedition.viewmodel.QrViewModel
+import com.example.cestaOganicaIA.navigation.AppNav
+import com.example.cestaOganicaIA.ui.theme.HuertoHogarDefinitiveEditionTheme
+import com.example.cestaOganicaIA.utils.CameraPermissionHelper
+import com.example.cestaOganicaIA.viewmodel.QrViewModel
 
 class MainActivity : ComponentActivity() {
 

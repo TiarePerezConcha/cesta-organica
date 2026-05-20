@@ -7,11 +7,13 @@ import com.example.cestaOganicaIA.data.database.CarritoItemEntity
 import com.example.cestaOganicaIA.data.database.PedidoEntity
 import com.example.cestaOganicaIA.data.repository.CarritoRepository
 import com.example.cestaOganicaIA.data.repository.PedidoRepository
+import com.example.cestaOganicaIA.data.session.SessionManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.random.Random
 
 class CarritoViewModel(
     private val carritoRepo: CarritoRepository,
@@ -21,9 +23,9 @@ class CarritoViewModel(
     private val _items = MutableStateFlow<List<CarritoItemEntity>>(emptyList())
     val items: StateFlow<List<CarritoItemEntity>> = _items.asStateFlow()
 
-    val total: StateFlow<Int> = _items.map { lista ->
+    val total: StateFlow<Double> = _items.map { lista ->
         lista.sumOf { it.precioUnitario * it.cantidad }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0.0)
 
     val cantidadTotal: StateFlow<Int> = _items.map { lista ->
         lista.sumOf { it.cantidad }
@@ -63,15 +65,22 @@ class CarritoViewModel(
         onStockDescontar: (String, Int) -> Unit
     ) {
         viewModelScope.launch {
+            val user = SessionManager.currentUser
+            val ordenId = Random.nextInt(1000, 9999)
             val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+            
             _items.value.forEach { item ->
                 pedidoRepo.confirmarPedido(
                     PedidoEntity(
+                        ordenId = ordenId,
                         usuarioId = uid,
+                        nombreContacto = user?.nombre ?: "Invitado",
+                        correoContacto = user?.correo ?: "",
                         nombreProducto = item.nombreProducto,
                         precioUnitario = item.precioUnitario,
                         cantidad = item.cantidad,
                         total = item.precioUnitario * item.cantidad,
+                        imagenResId = item.imagenResId,
                         fechaEntrega = fechaEntrega,
                         direccionEntrega = direccion,
                         fechaPedido = fecha,

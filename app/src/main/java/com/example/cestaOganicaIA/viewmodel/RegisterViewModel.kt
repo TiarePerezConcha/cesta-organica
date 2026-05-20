@@ -6,12 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cestaOganicaIA.data.model.Credential
-import com.example.cestaOganicaIA.data.repository.AuthRepository
 import com.example.cestaOganicaIA.data.repository.UserRepository
 import kotlinx.coroutines.launch
 
 class RegisterViewModel : ViewModel() {
-    private val authRepo = AuthRepository()
     
     var isLoading by mutableStateOf(false)
         private set
@@ -25,24 +23,23 @@ class RegisterViewModel : ViewModel() {
             isLoading = true
             errorMsg = null
             
-            val authResult = authRepo.register(correo, clave)
-            authResult.onSuccess { firebaseUser ->
-                val newProfile = Credential(
-                    uid = firebaseUser.uid,
-                    nombre = nombre,
-                    correo = correo,
-                    usuario = usuario,
-                    telefono = telefono,
-                    direccion = direccion
-                )
-                UserRepository.saveProfile(newProfile).onSuccess {
-                    registrationSuccess = true
-                }.onFailure {
-                    errorMsg = "Perfil creado, pero error al guardar datos: ${it.message}"
-                }
+            val newUser = Credential(
+                nombre = nombre,
+                correo = correo,
+                usuario = usuario,
+                telefono = telefono,
+                direccion = direccion,
+                password = clave
+            )
+
+            val result = UserRepository.register(newUser)
+            
+            result.onSuccess {
+                registrationSuccess = true
             }.onFailure {
                 errorMsg = it.message ?: "Error al crear cuenta"
             }
+
             isLoading = false
         }
     }

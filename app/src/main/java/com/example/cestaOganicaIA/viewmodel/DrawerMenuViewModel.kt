@@ -1,10 +1,10 @@
-package com.example.huertohogardefinitiveedition.viewmodel
+package com.example.cestaOganicaIA.viewmodel
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.example.huertohogardefinitiveedition.data.model.Categoria
-import com.example.huertohogardefinitiveedition.data.model.ProductoItem
-import com.example.huertohogardefinitiveedition.R
+import com.example.cestaOganicaIA.data.model.Categoria
+import com.example.cestaOganicaIA.data.model.ProductoItem
+import com.example.cestaOganicaIA.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 

@@ -1,6 +1,6 @@
-package com.example.huertohogardefinitiveedition.data.repository
+package com.example.cestaOganicaIA.data.repository
 
-import com.example.huertohogardefinitiveedition.data.model.Resena
+import com.example.cestaOganicaIA.data.model.Resena
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,7 +58,4 @@ object ResenaRepository {
     fun obtenerResenasPorProducto(nombreProducto: String): List<Resena> {
         return resenas.filter { it.nombreProducto.equals(nombreProducto, ignoreCase = true) }
     }
-
-    // LA FUNCIÓN 'actualizarStock' HA SIDO ELIMINADA DE ESTE ARCHIVO.
-    // SU LÓGICA AHORA VIVE EXCLUSIVAMENTE EN 'DrawerMenuViewModel.kt'
 }

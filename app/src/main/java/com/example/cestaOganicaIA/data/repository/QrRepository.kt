@@ -1,6 +1,6 @@
-package com.example.huertohogardefinitiveedition.data.repository
+package com.example.cestaOganicaIA.data.repository
 
-import com.example.huertohogardefinitiveedition.data.model.QrResult
+import com.example.cestaOganicaIA.data.model.QrResult
 
 class QrRepository {
     fun processQrContent(content: String): QrResult {

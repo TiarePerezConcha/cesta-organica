@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.data.model
+package com.example.cestaOganicaIA.data.model
 
 
 // Representa a un usuario del sistema
@@ -25,5 +25,3 @@ data class Credential(
         )
     }
 }
-
-

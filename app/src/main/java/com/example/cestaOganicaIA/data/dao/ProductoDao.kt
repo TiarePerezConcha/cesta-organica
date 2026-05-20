@@ -1,9 +1,9 @@
-package com.example.huertohogardefinitiveedition.data.dao
+package com.example.cestaOganicaIA.data.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import com.example.huertohogardefinitiveedition.data.model.Producto
+import com.example.cestaOganicaIA.data.model.Producto
 import kotlinx.coroutines.flow.Flow
 
 @Dao

@@ -1,6 +1,6 @@
-package com.example.huertohogardefinitiveedition.data.repository
+package com.example.cestaOganicaIA.data.repository
 
-import com.example.huertohogardefinitiveedition.data.model.Credential
+import com.example.cestaOganicaIA.data.model.Credential
 import kotlin.inc
 
 object UserRepository {

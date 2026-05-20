@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.view
+package com.example.cestaOganicaIA.view
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,17 +16,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.huertohogardefinitiveedition.data.database.PedidoHistorial
-import com.example.huertohogardefinitiveedition.data.model.Producto
-import com.example.huertohogardefinitiveedition.data.session.SessionManager
+import com.example.cestaOganicaIA.data.database.PedidoHistorial
+import com.example.cestaOganicaIA.data.model.Producto
+import com.example.cestaOganicaIA.data.session.SessionManager
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 
 import androidx.navigation.NavController
-import com.example.huertohogardefinitiveedition.data.model.Credential
-import com.example.huertohogardefinitiveedition.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.data.model.Credential
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,7 +139,7 @@ fun HistorialPedidosScreen(
                             leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
                             onClick = {
                                 menuOpen = false
-                                SessionManager.logout()
+                                SessionManager.currentUser = null // Assuming logout means clearing current user
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                     launchSingleTop = true
@@ -188,10 +188,10 @@ private fun PedidoCard(pedido: Producto) {
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("🎉 Pedido Realizado 🎉", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp)); Divider(); Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp))
             Text("• Producto: ${pedido.nombre}")
             Text("• Cantidad: ${pedido.cantidad}")
-            Spacer(Modifier.height(8.dp)); Divider(); Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp))
             Text("Total pagado: ${pedido.precio}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
         }
     }

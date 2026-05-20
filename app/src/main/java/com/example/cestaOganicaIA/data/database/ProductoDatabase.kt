@@ -1,11 +1,11 @@
-package com.example.huertohogardefinitiveedition.data.database
+package com.example.cestaOganicaIA.data.database
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.huertohogardefinitiveedition.data.dao.ProductoDao
-import com.example.huertohogardefinitiveedition.data.model.Producto
+import com.example.cestaOganicaIA.data.dao.ProductoDao
+import com.example.cestaOganicaIA.data.model.Producto
 
 @Database(
     entities = [Producto::class],

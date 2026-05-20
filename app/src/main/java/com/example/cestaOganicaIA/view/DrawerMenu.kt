@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.view
+package com.example.cestaOganicaIA.view
 
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -23,9 +23,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.huertohogardefinitiveedition.data.model.Credential
-import com.example.huertohogardefinitiveedition.data.session.SessionManager
-import com.example.huertohogardefinitiveedition.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.data.model.Credential
+import com.example.cestaOganicaIA.data.session.SessionManager
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +56,7 @@ fun DrawerMenu(
 
     // null = mostrar TODOS los productos
     var categoriaSeleccionada by remember {
-        mutableStateOf<com.example.huertohogardefinitiveedition.data.model.Categoria?>(null)
+        mutableStateOf<com.example.cestaOganicaIA.data.model.Categoria?>(null)
     }
 
     LaunchedEffect(categoriasState) {
@@ -154,7 +154,7 @@ fun DrawerMenu(
                                 leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
-                                    SessionManager.logout()
+                                    SessionManager.currentUser = null
                                     navController.navigate("login") {
                                         popUpTo(0) { inclusive = true }
                                         launchSingleTop = true

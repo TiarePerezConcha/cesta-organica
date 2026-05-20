@@ -1,10 +1,10 @@
-package com.example.huertohogardefinitiveedition.viewmodel
+package com.example.cestaOganicaIA.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.huertohogardefinitiveedition.data.model.QrResult
-import com.example.huertohogardefinitiveedition.data.repository.QrRepository
+import com.example.cestaOganicaIA.data.model.QrResult
+import com.example.cestaOganicaIA.data.repository.QrRepository
 
 class QrViewModel : ViewModel() {
     private val repository = QrRepository()

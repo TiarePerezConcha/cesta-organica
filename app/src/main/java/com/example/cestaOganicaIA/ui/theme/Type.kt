@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.ui.theme
+package com.example.cestaOganicaIA.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

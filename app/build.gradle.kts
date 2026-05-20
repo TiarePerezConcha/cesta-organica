@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.huertohogardefinitiveedition"
+    namespace = "com.example.cestaOganicaIA"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.huertohogardefinitiveedition"
+        applicationId = "com.example.cestaOganicaIA"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

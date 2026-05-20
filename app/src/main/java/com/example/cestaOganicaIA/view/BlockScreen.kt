@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.view
+package com.example.cestaOganicaIA.view
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -68,7 +68,7 @@ fun BlockScreen() {
                     textAlign = TextAlign.Justify
                 )
 
-                Divider(
+                HorizontalDivider(
                     color = colorVerde.copy(alpha = 0.6f),
                     thickness = 2.dp,
                     modifier = Modifier.padding(vertical = 12.dp)

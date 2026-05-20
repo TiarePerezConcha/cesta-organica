@@ -1,3 +1,3 @@
-package com.example.huertohogardefinitiveedition.data.model
+package com.example.cestaOganicaIA.data.model
 
 data class QrResult(val content: String)

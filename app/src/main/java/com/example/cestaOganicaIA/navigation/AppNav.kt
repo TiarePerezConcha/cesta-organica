@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.navigation
+package com.example.cestaOganicaIA.navigation
 
 import android.net.Uri
 import androidx.compose.foundation.layout.padding
@@ -12,41 +12,38 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.huertohogardefinitiveedition.ui.gestion.GestionPerfilScreen
-import com.example.huertohogardefinitiveedition.ui.gestion.GestionUsuarioScreen
-import com.example.huertohogardefinitiveedition.ui.gestion.RecuperarContrasenaScreen
-import com.example.huertohogardefinitiveedition.ui.login.LoginScreen
-import com.example.huertohogardefinitiveedition.ui.registro.RegistrarseScreen
-import com.example.huertohogardefinitiveedition.view.BlockScreen
-import com.example.huertohogardefinitiveedition.view.DrawerMenu
-import com.example.huertohogardefinitiveedition.view.HistorialPedidosScreen
-import com.example.huertohogardefinitiveedition.view.ProductoFormScreen
-import com.example.huertohogardefinitiveedition.view.QrScannerScreen
-import com.example.huertohogardefinitiveedition.viewmodel.QrViewModel
-import com.example.huertohogardefinitiveedition.viewmodel.DrawerMenuViewModel
-import com.example.huertohogardefinitiveedition.data.session.SessionManager
+import com.example.cestaOganicaIA.ui.gestion.GestionPerfilScreen
+import com.example.cestaOganicaIA.ui.gestion.GestionUsuarioScreen
+import com.example.cestaOganicaIA.ui.auth.RecuperarContrasenaScreen
+import com.example.cestaOganicaIA.ui.auth.LoginScreen
+import com.example.cestaOganicaIA.ui.auth.RegistrarseScreen
+import com.example.cestaOganicaIA.view.BlockScreen
+import com.example.cestaOganicaIA.view.DrawerMenu
+import com.example.cestaOganicaIA.view.HistorialPedidosScreen
+import com.example.cestaOganicaIA.view.ProductoFormScreen
+import com.example.cestaOganicaIA.view.QrScannerScreen
+import com.example.cestaOganicaIA.viewmodel.QrViewModel
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.data.session.SessionManager
+import com.example.cestaOganicaIA.ui.shared.AppRoutes
 
 @Composable
 fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
     val navController = rememberNavController()
-
     val drawerMenuViewModel: DrawerMenuViewModel = viewModel()
 
+    NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
 
-    NavHost(navController = navController, startDestination = "login") {
-
-        // --- Rutas de Login y Registro ---
-        composable("login") {
+        composable(AppRoutes.LOGIN) {
             LoginScreen(navController = navController)
         }
-        composable("registrarse") {
+        composable(AppRoutes.REGISTRO) {
             RegistrarseScreen(navController = navController)
         }
-        composable("recuperar_contrasena") {
+        composable(AppRoutes.RECUPERAR_CLAVE) {
             RecuperarContrasenaScreen(navController = navController)
         }
 
-        // --- Ruta Principal de la App (Catálogo) ---
         composable(
             route = "DrawerMenu/{username}",
             arguments = listOf(navArgument("username") { type = NavType.StringType })
@@ -58,8 +55,15 @@ fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
                 viewModel = drawerMenuViewModel
             )
         }
+        
+        // Alias para compatibilidad con AppRoutes.CATALOGO si es necesario
+        composable(AppRoutes.CATALOGO) {
+            val username = SessionManager.currentUser?.usuario ?: "invitado"
+            navController.navigate("DrawerMenu/$username") {
+                popUpTo(AppRoutes.LOGIN) { inclusive = true }
+            }
+        }
 
-        // --- Rutas de Productos y Herramientas ---
         composable(
             route = "ProductoFormScreen/{nombre}/{precio}/{descripcion}/{stock}",
             arguments = listOf(
@@ -83,7 +87,7 @@ fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
             )
         }
 
-        composable("QRScannerScreen") {
+        composable(AppRoutes.QR_SCANNER) {
             val qrViewModel: QrViewModel = viewModel()
             QrScannerScreen(
                 viewModel = qrViewModel,
@@ -92,16 +96,11 @@ fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
             )
         }
 
-        // --- Rutas del Menú de Usuario ---
-
-        //  Ruta para 'Mi Perfil'
-        composable("gestion_perfil") {
+        composable(AppRoutes.PERFIL) {
             GestionPerfilScreen(navController = navController)
         }
 
-        // Ruta única para 'Historial de pedidos'
-        composable("historial_pedidos") {
-
+        composable(AppRoutes.HISTORIAL) {
             HistorialPedidosScreen(
                 username = SessionManager.currentUser?.usuario ?: "",
                 navController = navController,
@@ -109,17 +108,15 @@ fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
             )
         }
 
-        // Para Admin
-        composable("gestion_usuarios") {
+        composable(AppRoutes.ADMIN_USUARIOS) {
             GestionUsuarioScreen(navController = navController)
         }
 
-        // --- Rutas Adicionales/Stubs ---
         composable("block") {
             BlockScreen()
         }
 
-        composable("carrito") {
+        composable(AppRoutes.CARRITO) {
             SimpleStub("Pantalla: Próximamente carrito de compras")
         }
     }

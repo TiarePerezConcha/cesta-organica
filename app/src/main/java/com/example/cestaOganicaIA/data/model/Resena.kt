@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.data.model
+package com.example.cestaOganicaIA.data.model
 
 data class Resena(
     val id: Int,// ID único de la reseña
