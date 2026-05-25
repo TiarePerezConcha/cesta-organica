@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.view
+package com.example.cestaOganicaIA.view
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -12,11 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.huertohogardefinitiveedition.viewmodel.QrViewModel
-import com.example.huertohogardefinitiveedition.utils.QrScanner
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
+import com.example.cestaOganicaIA.viewmodel.QrViewModel
+import com.example.cestaOganicaIA.utils.QrScanner
 
 @Composable
 fun QrScannerScreen(

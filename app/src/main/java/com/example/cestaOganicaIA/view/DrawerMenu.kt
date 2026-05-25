@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.view
+package com.example.cestaOganicaIA.view
 
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -10,22 +10,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.example.huertohogardefinitiveedition.data.model.Credential
-import com.example.huertohogardefinitiveedition.data.session.SessionManager
-import com.example.huertohogardefinitiveedition.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.data.model.Credential
+import com.example.cestaOganicaIA.data.session.SessionManager
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.ui.shared.AppRoutes
+import com.example.cestaOganicaIA.ui.shared.HuertoHogarTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,130 +31,94 @@ fun DrawerMenu(
     navController: NavController,
     viewModel: DrawerMenuViewModel
 ) {
-    // Estado que viene del ViewModel
-    val categoriasState = viewModel.categorias.value
-
-    val huertoHogarColors = lightColorScheme(
-        primary = Color(0xFF4CAF50),
-        onPrimary = Color.White,
-        secondary = Color(0xFFFF9800),
-        onSecondary = Color.White,
-        surface = Color(0xFFFFF8F5),
-        onSurface = Color(0xFF3A3A3A)
-    )
+    // Observamos las categorías del ViewModel
+    val categoriasState by viewModel.categorias
 
     val current = SessionManager.currentUser
+
+    // CORRECCIÓN: Usamos .uid en lugar de .idUsuario
+    // También verificamos si el usuario actual coincide con las credenciales de Admin
+    val isAdmin = current?.let { user ->
+        user.uid == Credential.Admin.uid ||
+                user.usuario.equals(Credential.Admin.usuario, ignoreCase = true)
+    } ?: false
+
     val displayName = current?.nombre?.takeIf { it.isNotBlank() } ?: current?.usuario ?: username
-    val isAdmin =
-        (current?.idUsuario == Credential.Admin.idUsuario) ||
-                (current?.usuario?.equals(Credential.Admin.usuario, ignoreCase = true) == true)
 
     var menuOpen by remember { mutableStateOf(false) }
-
-    // null = mostrar TODOS los productos
     var categoriaSeleccionada by remember {
-        mutableStateOf<com.example.huertohogardefinitiveedition.data.model.Categoria?>(null)
+        mutableStateOf<com.example.cestaOganicaIA.data.model.Categoria?>(null)
     }
 
-    LaunchedEffect(categoriasState) {
-        if (categoriaSeleccionada != null && !categoriasState.contains(categoriaSeleccionada)) {
-            categoriaSeleccionada = null
-        }
-    }
-
-    // Lista que decide qué productos mostrar
+    // Filtrado de productos basado en la categoría seleccionada
     val productosAMostrar = if (categoriaSeleccionada == null) {
         categoriasState.flatMap { it.productos }
     } else {
         categoriaSeleccionada!!.productos
     }
 
-    MaterialTheme(colorScheme = huertoHogarColors) {
+    HuertoHogarTheme {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = {
                         Column {
-                            Text(
-                                text = "Perfil: $displayName",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            current?.correo?.takeIf { it.isNotBlank() }?.let { correo ->
-                                Text(
-                                    text = correo,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                                )
+                            Text(displayName, style = MaterialTheme.typography.titleMedium)
+                            current?.correo?.takeIf { it.isNotBlank() }?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     },
                     actions = {
                         IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menú de perfil")
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menú")
                         }
-
-                        DropdownMenu(
-                            expanded = menuOpen,
-                            onDismissRequest = { menuOpen = false }
-                        ) {
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
                                 text = { Text("Mi Perfil") },
-                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("gestion_perfil")
-                                }
+                                leadingIcon = { Icon(Icons.Default.Person, null) },
+                                onClick = { menuOpen = false; navController.navigate(AppRoutes.PERFIL) }
                             )
-
                             DropdownMenuItem(
                                 text = { Text("Historial de pedidos") },
-                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("historial_pedidos")
-                                }
+                                leadingIcon = { Icon(Icons.Default.History, null) },
+                                onClick = { menuOpen = false; navController.navigate(AppRoutes.HISTORIAL) }
                             )
-
-                            DropdownMenuItem(
-                                text = { Text("Block") },
-                                leadingIcon = { Icon(Icons.Default.Apps, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("block")
-                                }
-                            )
-
                             DropdownMenuItem(
                                 text = { Text("Carrito") },
-                                leadingIcon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("carrito")
-                                }
+                                leadingIcon = { Icon(Icons.Default.ShoppingCart, null) },
+                                onClick = { menuOpen = false; navController.navigate(AppRoutes.CARRITO) }
                             )
 
                             if (isAdmin) {
+                                HorizontalDivider()
+                                Text(
+                                    "Panel de Control",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                                 DropdownMenuItem(
-                                    text = { Text("Gestionar usuarios") },
-                                    leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
-                                    onClick = {
-                                        menuOpen = false
-                                        navController.navigate("gestion_usuarios")
-                                    }
+                                    text = { Text("Gestionar Usuarios") },
+                                    leadingIcon = { Icon(Icons.Default.Group, null) },
+                                    onClick = { menuOpen = false; navController.navigate(AppRoutes.ADMIN_USUARIOS) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Monitor de Pedidos") },
+                                    leadingIcon = { Icon(Icons.Default.Assignment, null) },
+                                    onClick = { menuOpen = false; navController.navigate(AppRoutes.ADMIN_PEDIDOS) }
                                 )
                             }
 
                             HorizontalDivider()
-
                             DropdownMenuItem(
                                 text = { Text("Cerrar sesión") },
-                                leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Default.Logout, null) },
                                 onClick = {
                                     menuOpen = false
                                     SessionManager.logout()
-                                    navController.navigate("login") {
+                                    navController.navigate(AppRoutes.LOGIN) {
                                         popUpTo(0) { inclusive = true }
-                                        launchSingleTop = true
                                     }
                                 }
                             )
@@ -171,150 +132,79 @@ fun DrawerMenu(
                 )
             }
         ) { innerPadding ->
-
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
-
-                // =========================
-                // FILTROS / CATEGORÍAS
-                // =========================
+            Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                // Selector de Categorías (LazyRow)
                 LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
-
-
-
-
-                    // BOTÓN TODOS
                     item {
                         FilterChip(
                             selected = (categoriaSeleccionada == null),
                             onClick = { categoriaSeleccionada = null },
                             label = { Text("Todos") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Storefront, contentDescription = "Todos")
-                            }
+                            leadingIcon = { Icon(Icons.Default.Storefront, null) }
                         )
                     }
-
-                    // CATEGORÍAS
                     items(categoriasState) { categoria ->
                         FilterChip(
                             selected = (categoria.nombre == categoriaSeleccionada?.nombre),
                             onClick = { categoriaSeleccionada = categoria },
                             label = { Text(categoria.nombre) },
-                            leadingIcon = {
-                                Icon(categoria.icono, contentDescription = categoria.nombre)
-                            }
+                            leadingIcon = { Icon(categoria.icono, null) }
                         )
                     }
                 }
 
-                // =========================
-                // LISTA DE PRODUCTOS
-                // =========================
-                LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(productosAMostrar) { producto ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            onClick = {
-                                val nombreNav = Uri.encode(producto.nombre)
-                                val precioNav = producto.precio
-                                val descripcionNav = Uri.encode(producto.descripcion)
-
-                                navController.navigate(
-                                    "ProductoFormScreen/$nombreNav/$precioNav/$descripcionNav/${producto.stock}"
-                                )
+                // Lista de Productos (LazyColumn)
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    if (productosAMostrar.isEmpty()) {
+                        item {
+                            Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No hay productos disponibles", color = Color.Gray)
                             }
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                        }
+                    } else {
+                        items(productosAMostrar) { producto ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                onClick = {
+                                    val n = Uri.encode(producto.nombre)
+                                    val d = Uri.encode(producto.descripcion)
+                                    navController.navigate("ProductoFormScreen/$n/${producto.precio}/$d/${producto.stock}/${producto.imagenResId}")
+                                }
                             ) {
-                                Image(
-                                    painter = painterResource(id = producto.imagenResId),
-                                    contentDescription = producto.nombre,
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .padding(8.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        text = producto.nombre,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Image(
+                                        painter = painterResource(id = producto.imagenResId),
+                                        contentDescription = producto.nombre,
+                                        modifier = Modifier.size(100.dp).padding(8.dp),
+                                        contentScale = ContentScale.Crop
                                     )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
-                                    Text(
-                                        text = producto.descripcion,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 2
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Text(
-                                        text = "Quedan: ${producto.stock}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (producto.stock < 10) Color.Red else Color.Gray,
-                                        modifier = Modifier.align(Alignment.Start)
-                                    )
-
-                                    Text(
-                                        text = "$${producto.precio}",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.align(Alignment.End)
-                                    )
+                                    Column(modifier = Modifier.weight(1f).padding(8.dp)) {
+                                        Text(producto.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Text(producto.descripcion, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(
+                                                "Stock: ${producto.stock}",
+                                                color = if (producto.stock < 5) Color.Red else Color.Gray,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                            Text(
+                                                "$${producto.precio}",
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-                Text(
-                    text = "@ 2026 CestaOrganica App",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DrawerMenuPreview() {
-    val navController = rememberNavController()
-    val previewViewModel = DrawerMenuViewModel()
-
-    DrawerMenu(
-        username = "Usuario Prueba",
-        navController = navController,
-        viewModel = previewViewModel
-    )
 }

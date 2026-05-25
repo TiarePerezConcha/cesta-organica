@@ -1,89 +1,121 @@
-package com.example.huertohogardefinitiveedition.navigation
+package com.example.cestaOganicaIA.navigation
 
 import android.net.Uri
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.huertohogardefinitiveedition.ui.gestion.GestionPerfilScreen
-import com.example.huertohogardefinitiveedition.ui.gestion.GestionUsuarioScreen
-import com.example.huertohogardefinitiveedition.ui.gestion.RecuperarContrasenaScreen
-import com.example.huertohogardefinitiveedition.ui.login.LoginScreen
-import com.example.huertohogardefinitiveedition.ui.registro.RegistrarseScreen
-import com.example.huertohogardefinitiveedition.view.BlockScreen
-import com.example.huertohogardefinitiveedition.view.DrawerMenu
-import com.example.huertohogardefinitiveedition.view.HistorialPedidosScreen
-import com.example.huertohogardefinitiveedition.view.ProductoFormScreen
-import com.example.huertohogardefinitiveedition.view.QrScannerScreen
-import com.example.huertohogardefinitiveedition.viewmodel.QrViewModel
-import com.example.huertohogardefinitiveedition.viewmodel.DrawerMenuViewModel
-import com.example.huertohogardefinitiveedition.data.session.SessionManager
+import com.example.cestaOganicaIA.data.repository.CarritoRepository
+import com.example.cestaOganicaIA.data.repository.PedidoRepository
+import com.example.cestaOganicaIA.data.repository.FavoritoRepository
+import com.example.cestaOganicaIA.ui.auth.LoginScreen
+import com.example.cestaOganicaIA.ui.auth.RegistroScreen
+import com.example.cestaOganicaIA.ui.auth.RecuperarClaveScreen
+import com.example.cestaOganicaIA.ui.gestion.GestionPerfilScreen
+import com.example.cestaOganicaIA.ui.gestion.GestionUsuarioScreen
+import com.example.cestaOganicaIA.ui.gestion.AdminPedidosScreen
+import com.example.cestaOganicaIA.view.BlockScreen
+import com.example.cestaOganicaIA.view.DrawerMenu
+import com.example.cestaOganicaIA.view.HistorialPedidosScreen
+import com.example.cestaOganicaIA.view.ProductoFormScreen
+import com.example.cestaOganicaIA.view.QrScannerScreen
+import com.example.cestaOganicaIA.view.CarritoScreen
+import com.example.cestaOganicaIA.viewmodel.QrViewModel
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
+import com.example.cestaOganicaIA.viewmodel.CarritoViewModel
+import com.example.cestaOganicaIA.viewmodel.HistorialViewModel
+import com.example.cestaOganicaIA.viewmodel.AdminViewModel
+import com.example.cestaOganicaIA.viewmodel.CatalogViewModel
+import com.example.cestaOganicaIA.data.session.SessionManager
+import com.example.cestaOganicaIA.ui.shared.AppRoutes
 
 @Composable
 fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
     val navController = rememberNavController()
-
+    
+    // Repositorios Firebase
+    val carritoRepo = CarritoRepository()
+    val pedidoRepo = PedidoRepository()
+    val favoritoRepo = FavoritoRepository()
+    
+    // ViewModels centralizados
     val drawerMenuViewModel: DrawerMenuViewModel = viewModel()
+    
+    val catalogViewModel: CatalogViewModel = viewModel(
+        factory = CatalogViewModel.Factory(carritoRepo, favoritoRepo)
+    )
+    
+    val carritoViewModel: CarritoViewModel = viewModel(
+        factory = CarritoViewModel.Factory(carritoRepo, pedidoRepo)
+    )
+    
+    val historialViewModel: HistorialViewModel = viewModel(
+        factory = HistorialViewModel.Factory(pedidoRepo)
+    )
+    
+    val adminViewModel: AdminViewModel = viewModel(
+        factory = AdminViewModel.Factory(pedidoRepo)
+    )
 
+    NavHost(navController = navController, startDestination = AppRoutes.LOGIN) {
 
-    NavHost(navController = navController, startDestination = "login") {
-
-        // --- Rutas de Login y Registro ---
-        composable("login") {
+        composable(AppRoutes.LOGIN) {
             LoginScreen(navController = navController)
         }
-        composable("registrarse") {
-            RegistrarseScreen(navController = navController)
+        
+        composable(AppRoutes.REGISTRO) {
+            RegistroScreen(navController = navController)
         }
-        composable("recuperar_contrasena") {
-            RecuperarContrasenaScreen(navController = navController)
+        
+        composable(AppRoutes.RECUPERAR_CLAVE) {
+            RecuperarClaveScreen(navController = navController)
         }
 
-        // --- Ruta Principal de la App (Catálogo) ---
-        composable(
-            route = "DrawerMenu/{username}",
-            arguments = listOf(navArgument("username") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val usernameArg = backStackEntry.arguments?.getString("username") ?: ""
+        composable(AppRoutes.CATALOGO) {
+            val user = SessionManager.currentUser
+            LaunchedEffect(user) {
+                user?.let { catalogViewModel.cargarDatosUsuario(it.uid) }
+            }
+
             DrawerMenu(
-                username = usernameArg,
+                username = user?.usuario ?: "Invitado",
                 navController = navController,
                 viewModel = drawerMenuViewModel
             )
         }
 
-        // --- Rutas de Productos y Herramientas ---
         composable(
-            route = "ProductoFormScreen/{nombre}/{precio}/{descripcion}/{stock}",
+            route = "ProductoFormScreen/{nombre}/{precio}/{descripcion}/{stock}/{imagenResId}",
             arguments = listOf(
                 navArgument("nombre") { type = NavType.StringType },
                 navArgument("precio") { type = NavType.StringType },
                 navArgument("descripcion") { type = NavType.StringType },
-                navArgument("stock") { type = NavType.IntType }
+                navArgument("stock") { type = NavType.IntType },
+                navArgument("imagenResId") { type = NavType.IntType }
             )
         ) { backStackEntry ->
             val nombre = Uri.decode(backStackEntry.arguments?.getString("nombre") ?: "")
             val precio = backStackEntry.arguments?.getString("precio") ?: ""
             val descripcion = Uri.decode(backStackEntry.arguments?.getString("descripcion") ?: "")
             val stock = backStackEntry.arguments?.getInt("stock") ?: 0
+            val imagenResId = backStackEntry.arguments?.getInt("imagenResId") ?: 0
 
             ProductoFormScreen(
                 navController = navController,
                 nombre = nombre,
                 precio = precio,
                 descripcion = descripcion,
-                stock = stock
+                stock = stock,
+                imagenResId = imagenResId,
+                carritoViewModel = carritoViewModel
             )
         }
 
-        composable("QRScannerScreen") {
+        composable(AppRoutes.QR_SCANNER) {
             val qrViewModel: QrViewModel = viewModel()
             QrScannerScreen(
                 viewModel = qrViewModel,
@@ -92,40 +124,38 @@ fun AppNav(hasCameraPermission: Boolean, onRequestPermission: () -> Unit) {
             )
         }
 
-        // --- Rutas del Menú de Usuario ---
-
-        //  Ruta para 'Mi Perfil'
-        composable("gestion_perfil") {
+        composable(AppRoutes.PERFIL) {
             GestionPerfilScreen(navController = navController)
         }
 
-        // Ruta única para 'Historial de pedidos'
-        composable("historial_pedidos") {
-
+        composable(AppRoutes.HISTORIAL) {
             HistorialPedidosScreen(
-                username = SessionManager.currentUser?.usuario ?: "",
                 navController = navController,
-                viewModel = drawerMenuViewModel
+                viewModel = historialViewModel
             )
         }
 
-        // Para Admin
-        composable("gestion_usuarios") {
+        composable(AppRoutes.ADMIN_USUARIOS) {
             GestionUsuarioScreen(navController = navController)
         }
 
-        // --- Rutas Adicionales/Stubs ---
+        composable(AppRoutes.ADMIN_PEDIDOS) {
+            AdminPedidosScreen(
+                navController = navController,
+                viewModel = adminViewModel
+            )
+        }
+
         composable("block") {
             BlockScreen()
         }
 
-        composable("carrito") {
-            SimpleStub("Pantalla: Próximamente carrito de compras")
+        composable(AppRoutes.CARRITO) {
+            CarritoScreen(
+                navController = navController,
+                carritoViewModel = carritoViewModel,
+                drawerMenuViewModel = drawerMenuViewModel
+            )
         }
     }
-}
-
-@Composable
-private fun SimpleStub(texto: String) {
-    Text(text = texto, modifier = Modifier.padding(24.dp))
 }

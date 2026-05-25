@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.ui.theme
+package com.example.cestaOganicaIA.ui.theme
 
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color

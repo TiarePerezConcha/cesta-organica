@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.utils
+package com.example.cestaOganicaIA.utils
 
 import android.Manifest
 import android.content.Context

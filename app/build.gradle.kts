@@ -2,22 +2,18 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-
-
-    // Agregar esto para habilitar KAPT
-
-    kotlin("kapt")
-
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
-    namespace = "com.example.huertohogardefinitiveedition"
-    compileSdk = 36
+    namespace = "com.example.cestaOganicaIA"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.huertohogardefinitiveedition"
+        applicationId = "com.example.cestaOganicaIA"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -34,11 +30,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -46,7 +42,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -56,38 +51,33 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    // Dependencia para la navegación con Jetpack Compose
     implementation("androidx.navigation:navigation-compose:2.7.7")
-
-
-    // Íconos (core opcional) y EXTENDIDOS (¡este es el clave!)
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Firebase (Externalización completa)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.crashlytics)
 
-    // Dependencias Room
-    implementation("androidx.room:room-runtime:2.6.1")  // Versión actualizada
-    kapt("androidx.room:room-compiler:2.6.1")          // Misma versión
-    implementation("androidx.room:room-ktx:2.6.1")     // Misma versión
-
-// implementation(libs.androidx.compose.runtime.livedata)
-// Option 1: If you add it to libs.versions.toml
-//implementation(libs.androidx.compose.runtime.livedata)
-// OR Option 2: Direct notation
     implementation("androidx.compose.runtime:runtime-livedata:1.5.4")
-// CameraX
+
+    // Hardware y QR
     val camerax_version = "1.3.3"
     implementation("androidx.camera:camera-core:$camerax_version")
     implementation("androidx.camera:camera-camera2:$camerax_version")
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
-// ZXing para leer QR
+    // Componentes de lectura QR y el motor de Google ML Kit
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-// ML Kit Barcode Scanning
-    implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
+    // AQUÍ QUEDÓ CORREGIDO TU ALIAS SIN ERRORES SINTÁCTICOS
+    implementation(libs.mlkit.barcode.scanning)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

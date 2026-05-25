@@ -1,6 +1,5 @@
 package com.example.cestaOganicaIA.ui.auth
 
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +21,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.cestaOganicaIA.R
 import com.example.cestaOganicaIA.data.model.Credential
-import com.example.cestaOganicaIA.data.repository.UserRepository
 import com.example.cestaOganicaIA.data.session.SessionManager
 import com.example.cestaOganicaIA.ui.shared.AppRoutes
 import com.example.cestaOganicaIA.ui.shared.HuertoHogarTheme
@@ -33,28 +31,50 @@ fun LoginScreen(navController: NavController, vm: LoginViewModel = viewModel()) 
     val state = vm.uiState
     var showPass by remember { mutableStateOf(false) }
 
+    // Detectar éxito en el login desde el ViewModel y navegar
+    LaunchedEffect(state.loginSuccess) {
+        if (state.loginSuccess) {
+            navController.navigate(AppRoutes.CATALOGO) {
+                popUpTo(AppRoutes.LOGIN) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
     HuertoHogarTheme {
         Scaffold { inner ->
             Column(
-                modifier = Modifier.padding(inner).fillMaxSize().padding(horizontal = 24.dp),
+                modifier = Modifier
+                    .padding(inner)
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Bienvenido a Huerto Hogar",
+                Text(
+                    "Bienvenido a Cesta Orgánica",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 16.dp))
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-                Image(painter = painterResource(R.drawable.logo_huerto_hogar),
+                Image(
+                    painter = painterResource(R.drawable.logo_huerto_hogar),
                     contentDescription = "Logo",
-                    modifier = Modifier.fillMaxWidth().height(140.dp).padding(bottom = 8.dp),
-                    contentScale = ContentScale.Fit)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .padding(bottom = 8.dp),
+                    contentScale = ContentScale.Fit
+                )
 
                 Spacer(Modifier.height(24.dp))
 
                 OutlinedTextField(
-                    value = state.username, onValueChange = vm::onUsernameChange,
-                    label = { Text("Usuario o correo") }, singleLine = true,
+                    value = state.username,
+                    onValueChange = vm::onUsernameChange,
+                    label = { Text("Correo o Usuario") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
@@ -62,12 +82,17 @@ fun LoginScreen(navController: NavController, vm: LoginViewModel = viewModel()) 
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
-                    value = state.password, onValueChange = vm::onPasswordChange,
-                    label = { Text("Contraseña") }, singleLine = true,
+                    value = state.password,
+                    onValueChange = vm::onPasswordChange,
+                    label = { Text("Contraseña") },
+                    singleLine = true,
                     visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPass = !showPass }) {
-                            Icon(if (showPass) Icons.Default.VisibilityOff else Icons.Default.Visibility, null)
+                            Icon(
+                                if (showPass) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -76,45 +101,66 @@ fun LoginScreen(navController: NavController, vm: LoginViewModel = viewModel()) 
 
                 if (state.error != null) {
                     Spacer(Modifier.height(8.dp))
-                    Text(state.error, color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        state.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
 
                 Spacer(Modifier.height(24.dp))
 
                 Button(
                     onClick = {
-                        if (state.username.isBlank() || state.password.isBlank()) {
-                            vm.setError("Completa usuario/correo y contraseña"); return@Button
-                        }
-                        UserRepository.login(state.username, state.password)
-                            .onSuccess { user ->
-                                SessionManager.login(user)
-                                navController.navigate(AppRoutes.CATALOGO) {
-                                    popUpTo(AppRoutes.LOGIN) { inclusive = true }
-                                    launchSingleTop = true
-                                }
+                        // LÓGICA PARA ADMIN PREDEFINIDO
+                        if (state.username == "admin" && state.password == "123") {
+                            val adminUser = Credential(
+                                uid = "ADMIN_STATIC",
+                                usuario = "admin",
+                                nombre = "Administrador Sistema",
+                                correo = "admin@cesta.cl",
+                                rol = "admin"
+                            )
+                            SessionManager.login(adminUser)
+                            navController.navigate(AppRoutes.CATALOGO) {
+                                popUpTo(AppRoutes.LOGIN) { inclusive = true }
                             }
-                            .onFailure { vm.setError(it.message) }
+                        } else {
+                            vm.login()
+                        }
                     },
                     enabled = !state.isLoading,
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) { Text(if (state.isLoading) "Validando..." else "Iniciar sesión") }
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Iniciar sesión")
+                    }
+                }
 
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedButton(
                     onClick = {
-                        SessionManager.login(Credential(idUsuario = -1, nombre = "Invitado",
-                            correo = "", usuario = "invitado", telefono = "", direccion = "", password = ""))
+                        SessionManager.login(
+                            Credential(
+                                uid = "INVITADO",
+                                nombre = "Invitado",
+                                correo = "invitado@cesta.cl",
+                                rol = "cliente"
+                            )
+                        )
                         navController.navigate(AppRoutes.CATALOGO) {
                             popUpTo(AppRoutes.LOGIN) { inclusive = true }
                         }
                     },
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) { Text("Ingresar como invitado") }
+                ) {
+                    Text("Ingresar como invitado")
+                }
 
                 Spacer(Modifier.height(24.dp))
 

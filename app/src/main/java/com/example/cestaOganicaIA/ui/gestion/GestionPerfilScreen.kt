@@ -1,38 +1,44 @@
 package com.example.cestaOganicaIA.ui.gestion
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cestaOganicaIA.data.session.SessionManager
 import com.example.cestaOganicaIA.data.repository.UserRepository
-
+import com.example.cestaOganicaIA.ui.shared.AppRoutes
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionPerfilScreen(navController: NavController) {
+    // Obtenemos el usuario actual de la sesión
+    val current = SessionManager.currentUser
+    val scope = rememberCoroutineScope()
 
-    // Si no hay sesión, vuelve al login
-    val current = remember { SessionManager.currentUser }
+    // Si no hay sesión, redirigir al login inmediatamente
     if (current == null) {
-        LaunchedEffect(Unit) { navController.navigate("login") }
+        LaunchedEffect(Unit) {
+            navController.navigate(AppRoutes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
         return
     }
 
-    // Colores locales Huerto Hogar
+    // Configuración de colores personalizada para la marca "Cesta Orgánica"
     val colors = lightColorScheme(
-        primary    = Color(0xFF4CAF50), // verde
+        primary    = Color(0xFF4CAF50),
         onPrimary  = Color.White,
-        secondary  = Color(0xFFFF9800), // naranjo
+        secondary  = Color(0xFFFF9800),
         onSecondary= Color.White,
         surface    = Color(0xFFFFF8F5),
         onSurface  = Color(0xFF3A3A3A),
@@ -40,26 +46,23 @@ fun GestionPerfilScreen(navController: NavController) {
     )
 
     MaterialTheme(colorScheme = colors) {
-        // Estado del formulario (prefill)
+        // Estados para los campos editables
         var nombre by remember { mutableStateOf(current.nombre) }
         var telefono by remember { mutableStateOf(current.telefono) }
         var direccion by remember { mutableStateOf(current.direccion) }
 
-        // Errores
-        var nombreErr by remember { mutableStateOf<String?>(null) }
-        var telefonoErr by remember { mutableStateOf<String?>(null) }
-        var direccionErr by remember { mutableStateOf<String?>(null) }
+        // Estados para manejo de errores y feedback
         var generalErr by remember { mutableStateOf<String?>(null) }
-
-        // Diálogo OK
+        var isLoading by remember { mutableStateOf(false) }
         var showOk by remember { mutableStateOf(false) }
 
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Mis datos", color = colors.onPrimary) },
+                    title = { Text("Mis Datos del Perfil", fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = colors.primary
+                        containerColor = colors.primary,
+                        titleContentColor = colors.onPrimary
                     )
                 )
             }
@@ -69,126 +72,123 @@ fun GestionPerfilScreen(navController: NavController) {
                     .padding(inner)
                     .fillMaxSize()
                     .background(colors.surface)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
-                // Usuario (solo lectura)
+                // --- Información de solo lectura ---
                 OutlinedTextField(
                     value = current.usuario,
                     onValueChange = {},
-                    label = { Text("Usuario") },
+                    label = { Text("Nombre de Usuario") },
                     enabled = false,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(disabledBorderColor = Color.LightGray)
                 )
 
-                // Correo (solo lectura)
                 OutlinedTextField(
                     value = current.correo,
                     onValueChange = {},
-                    label = { Text("Correo") },
+                    label = { Text("Correo Electrónico") },
                     enabled = false,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(disabledBorderColor = Color.LightGray)
                 )
 
-                // Nombre
+                // --- Campos Editables ---
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = { nombre = it; nombreErr = null; generalErr = null },
-                    label = { Text("Nombre completo") },
-                    isError = nombreErr != null,
-                    supportingText = { if (nombreErr != null) Text(nombreErr!!) },
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre Completo") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Teléfono (9 dígitos)
                 OutlinedTextField(
                     value = telefono,
                     onValueChange = { t ->
-                        telefono = t.filter { it.isDigit() }.take(9)
-                        telefonoErr = null; generalErr = null
+                        // Solo números y máximo 9 dígitos según requerimiento
+                        if (t.all { it.isDigit() } && t.length <= 9) telefono = t
                     },
-                    label = { Text("Teléfono (9 dígitos)") },
-                    isError = telefonoErr != null,
-                    supportingText = { if (telefonoErr != null) Text(telefonoErr!!) },
+                    label = { Text("Teléfono de Contacto") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Dirección
                 OutlinedTextField(
                     value = direccion,
-                    onValueChange = { direccion = it; direccionErr = null; generalErr = null },
-                    label = { Text("Dirección de entrega") },
-                    isError = direccionErr != null,
-                    supportingText = { if (direccionErr != null) Text(direccionErr!!) },
+                    onValueChange = { direccion = it },
+                    label = { Text("Dirección de Entrega") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Mensaje de error dinámico
                 if (generalErr != null) {
-                    Text(generalErr!!, color = colors.error)
+                    Text(generalErr!!, color = colors.error, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(Modifier.height(8.dp))
 
-                // Guardar cambios
+                // Botón Guardar con lógica de actualización corregida
                 Button(
                     onClick = {
-                        nombreErr = null; telefonoErr = null; direccionErr = null; generalErr = null
-                        var ok = true
-                        if (nombre.isBlank()) { nombreErr = "Campo obligatorio"; ok = false }
-                        if (telefono.length != 9) { telefonoErr = "Debe tener 9 dígitos"; ok = false }
-                        if (direccion.isBlank()) { direccionErr = "Campo obligatorio"; ok = false }
-                        if (!ok) return@Button
+                        val n = nombre.trim()
+                        val t = telefono.trim()
+                        val d = direccion.trim()
 
-                        val res = UserRepository.updateProfile(
-                            idUsuario = current.idUsuario,
-                            nombre = nombre.trim(),
-                            telefono = telefono.trim(),
-                            direccion = direccion.trim()
-                        )
-                        res.onSuccess { updated ->
-                            SessionManager.updateCurrent(updated)
-                            showOk = true
-                        }.onFailure { e ->
-                            generalErr = e.message ?: "No se pudo guardar"
+                        if (n.isEmpty() || t.length < 8 || d.isEmpty()) {
+                            generalErr = "Por favor, completa todos los campos correctamente."
+                            return@Button
+                        }
+
+                        scope.launch {
+                            isLoading = true
+                            generalErr = null
+
+                            // Llamamos al repositorio que ahora devuelve Result<Credential>
+                            val result = UserRepository.updateProfile(
+                                uid = current.uid, // Usamos uid directamente del modelo
+                                nombre = n,
+                                telefono = t,
+                                direccion = d
+                            )
+
+                            result.onSuccess { usuarioActualizado ->
+                                // Ahora pasamos el objeto Credential real, no un Unit
+                                SessionManager.updateCurrent(usuarioActualizado)
+                                showOk = true
+                                isLoading = false
+                            }.onFailure { e ->
+                                generalErr = "Error al actualizar: ${e.localizedMessage}"
+                                isLoading = false
+                            }
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(44.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.primary,
-                        contentColor = colors.onPrimary
-                    )
-                ) { Text("Guardar cambios") }
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary)
+                ) {
+                    if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    else Text("Guardar Cambios")
+                }
 
-                // Botón volver (abajo)
-                Spacer(Modifier.height(8.dp))
-                Button(
+                // Botón Volver
+                OutlinedButton(
                     onClick = { navController.popBackStack() },
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(44.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.secondary,
-                        contentColor = colors.onSecondary
-                    )
-                ) { Text("Volver atrás") }
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primary)
+                ) {
+                    Text("Volver al Catálogo")
+                }
             }
 
+            // Diálogo de confirmación de éxito
             if (showOk) {
                 AlertDialog(
                     onDismissRequest = { showOk = false },
-                    title = { Text("Datos actualizados") },
-                    text = { Text("Tu información se guardó correctamente.") },
+                    title = { Text("Perfil Actualizado") },
+                    text = { Text("Tus datos se han guardado correctamente en el sistema.") },
                     confirmButton = {
-                        TextButton(onClick = { showOk = false }) {
-                            Text("OK", color = colors.primary)
-                        }
+                        TextButton(onClick = { showOk = false }) { Text("Aceptar") }
                     }
                 )
             }

@@ -1,7 +1,9 @@
 package com.example.cestaOganicaIA.ui.gestion
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,9 +36,9 @@ fun AdminPedidosScreen(
     navController: NavController,
     viewModel: AdminViewModel
 ) {
+    val context = LocalContext.current
     val todosPedidos by viewModel.todosPedidos.collectAsState()
     
-    // Agrupamos por ordenId para mostrar tarjetas de órdenes completas
     val ordenesAgrupadas = remember(todosPedidos) {
         todosPedidos.groupBy { it.ordenId }
     }
@@ -44,10 +47,19 @@ fun AdminPedidosScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Monitor Global de Pedidos") },
+                    title = { Text("Monitor Global") },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    actions = {
+                        // BOTÓN PARA CARGAR PRODUCTOS PREDEFINIDOS A FIREBASE
+                        IconButton(onClick = { 
+                            viewModel.cargarCatalogoInicial()
+                            Toast.makeText(context, "Subiendo productos a Firebase...", Toast.LENGTH_LONG).show()
+                        }) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = "Cargar Catálogo")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -60,7 +72,10 @@ fun AdminPedidosScreen(
         ) { padding ->
             if (ordenesAgrupadas.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("No hay pedidos registrados en el sistema", color = Color.Gray)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("No hay pedidos en la nube", color = Color.Gray)
+                        Text("Usa el botón de arriba para subir el catálogo", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
                 }
             } else {
                 LazyColumn(
@@ -68,7 +83,7 @@ fun AdminPedidosScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(ordenesAgrupadas.entries.toList()) { entry ->
+                    items(ordenesAgrupadas.entries.toList(), key = { it.key }) { entry ->
                         AdminOrdenCard(
                             ordenId = entry.key,
                             items = entry.value,
@@ -109,21 +124,16 @@ private fun AdminOrdenCard(
             
             Spacer(Modifier.height(8.dp))
             
-            // Información del Cliente
-            val cliente = if (primerItem.usuarioId == -1) {
+            val cliente = if (primerItem.usuarioId == "INVITADO") {
                 "${primerItem.nombreContacto} (Invitado)"
             } else {
-                primerItem.nombreContacto.takeIf { it.isNotBlank() } ?: "Usuario #${primerItem.usuarioId}"
+                primerItem.nombreContacto.takeIf { it.isNotBlank() } ?: "Usuario registrado"
             }
             
             Text("Cliente: $cliente", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-            if (primerItem.correoContacto.isNotBlank()) {
-                Text(primerItem.correoContacto, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-
+            
             HorizontalDivider(Modifier.padding(vertical = 12.dp))
 
-            // Lista de productos
             items.forEach { pedido ->
                 Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (pedido.imagenResId != 0) {
@@ -142,23 +152,12 @@ private fun AdminOrdenCard(
 
             HorizontalDivider(Modifier.padding(vertical = 12.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Place, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                Spacer(Modifier.width(8.dp))
-                Text(primerItem.direccionEntrega, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-            
-            Spacer(Modifier.height(16.dp))
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                // Botón para cambiar estado
                 OutlinedButton(
                     onClick = { showStatusDialog = true },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(primerItem.estado.uppercase(), style = MaterialTheme.typography.labelSmall)
-                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(14.dp).padding(start = 4.dp))
                 }
                 
                 Text(
@@ -172,24 +171,20 @@ private fun AdminOrdenCard(
     }
 
     if (showStatusDialog) {
-        val estados = listOf("Confirmado", "Preparando", "En Camino", "Entregado", "Cancelado")
+        val estados = listOf("Confirmado", "En Camino", "Entregado", "Cancelado")
         AlertDialog(
             onDismissRequest = { showStatusDialog = false },
-            title = { Text("Cambiar Estado de la Orden") },
+            title = { Text("Cambiar Estado") },
             text = {
                 Column {
                     estados.forEach { estado ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { 
+                        TextButton(
+                            onClick = { 
                                 onStatusChange(estado)
                                 showStatusDialog = false
-                            }.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = (primerItem.estado == estado), onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(estado)
-                        }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(estado) }
                     }
                 }
             },
@@ -197,5 +192,3 @@ private fun AdminOrdenCard(
         )
     }
 }
-
-import androidx.compose.foundation.clickable

@@ -1,4 +1,4 @@
 package com.example.cestaOganicaIA.data.database
 
-class Appdatabase {
-}
+/** Desactivado. Migrado a Firebase. */
+class AppDatabase

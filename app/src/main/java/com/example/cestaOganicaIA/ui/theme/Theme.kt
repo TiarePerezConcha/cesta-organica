@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition.ui.theme
+package com.example.cestaOganicaIA.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

@@ -17,8 +17,10 @@ object AppRoutes {
     const val INFO              = "info"
     const val QR_SCANNER        = "qr_scanner"
 
+    // Admin
     const val ADMIN_USUARIOS    = "admin_usuarios"
     const val ADMIN_STOCK       = "admin_stock"
+    const val ADMIN_PEDIDOS     = "admin_pedidos"
 
     fun detalleProducto(nombre: String) = "detalle/$nombre"
 }

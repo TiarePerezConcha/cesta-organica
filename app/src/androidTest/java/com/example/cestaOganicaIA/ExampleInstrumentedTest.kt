@@ -1,4 +1,4 @@
-package com.example.huertohogardefinitiveedition
+package com.example.cestaOganicaIA
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

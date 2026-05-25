@@ -1,130 +1,62 @@
 package com.example.cestaOganicaIA.ui.gestion
 
-import androidx.compose.foundation.background
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.cestaOganicaIA.data.model.Credential
 import com.example.cestaOganicaIA.data.repository.UserRepository
 import com.example.cestaOganicaIA.data.session.SessionManager
-
+import com.example.cestaOganicaIA.ui.shared.HuertoHogarTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionUsuarioScreen(navController: NavController) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val currentAdmin = SessionManager.currentUser
 
-    // 🎨 Tema local con colores Huerto Hogar
-    val HuertoHogarColors = lightColorScheme(
-        primary = Color(0xFF4CAF50),   // Verde principal
-        onPrimary = Color.White,
-        secondary = Color(0xFFFF9800), // Naranjo
-        onSecondary = Color.White,
-        surface = Color(0xFFFFF8F5),   // Fondo claro cálido
-        onSurface = Color(0xFF3A3A3A)  // Texto gris oscuro
-    )
+    var usuariosList by remember { mutableStateOf<List<Credential>>(emptyList()) }
+    var query by remember { mutableStateOf("") }
+    var editOpen by remember { mutableStateOf(false) }
+    var editUser by remember { mutableStateOf<Credential?>(null) }
 
-    MaterialTheme(colorScheme = HuertoHogarColors) {
+    // Cargar usuarios desde Firestore
+    LaunchedEffect(Unit) {
+        usuariosList = UserRepository.getAllUsers()
+    }
 
-        val usuarios = remember {
-            mutableStateListOf<Credential>().apply { addAll(UserRepository.all()) }
-        }
+    val usuariosFiltrados = usuariosList.filter {
+        it.nombre.contains(query, ignoreCase = true) || 
+        it.usuario.contains(query, ignoreCase = true) ||
+        it.correo.contains(query, ignoreCase = true)
+    }
 
-        var editOpen by remember { mutableStateOf(false) }
-        var editUser by remember { mutableStateOf<Credential?>(null) }
-
+    HuertoHogarTheme {
         Scaffold(
             topBar = {
-                // TopAppBar con menú
-                val current = SessionManager.currentUser
-                val displayName = "Gestion usuarios"
-                val isAdmin =
-                    (current?.idUsuario == Credential.Admin.idUsuario) ||
-                            (current?.usuario?.equals(Credential.Admin.usuario, ignoreCase = true) == true)
-
-                var menuOpen by remember { mutableStateOf(false) }
-
                 TopAppBar(
-                    title = {
-                        Column {
-                            Text(text = "Perfil: $displayName")
-                            if (!current?.correo.isNullOrBlank()) {
-                                Text(
-                                    text = current!!.correo,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Menú de perfil",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = menuOpen,
-                            onDismissRequest = { menuOpen = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Actualizar datos") },
-                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("gestion_usuario")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Historial de pedidos") },
-                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    navController.navigate("historial_pedidos")
-                                }
-                            )
-                            if (isAdmin) {
-                                DropdownMenuItem(
-                                    text = { Text("Gestionar usuarios") },
-                                    leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
-
-                                    onClick = {
-                                        menuOpen = false
-                                        navController.navigate("Gestion")
-
-
-                                    }
-                                )
-                            }
-                            Divider()
-                            DropdownMenuItem(
-                                text = { Text("Cerrar sesión") },
-                                leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    SessionManager.logout()
-                                    navController.navigate("login") {
-                                        popUpTo("login") { inclusive = true }
-                                        launchSingleTop = true
-                                    }
-                                }
-                            )
+                    title = { Text("Gestión de Usuarios") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -133,100 +65,49 @@ fun GestionUsuarioScreen(navController: NavController) {
                         actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
-                // FIN HEADER
             }
         ) { inner ->
-            Column(
-                modifier = Modifier
-                    .padding(inner)
-                    .fillMaxSize()
-                    .background(HuertoHogarColors.surface)
-            ) {
-                if (usuarios.isEmpty()) {
+            Column(modifier = Modifier.padding(inner).fillMaxSize().padding(16.dp)) {
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("Buscar usuario...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                if (usuariosFiltrados.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Sin usuarios registrados", color = HuertoHogarColors.onSurface)
+                        Text("No hay usuarios registrados", color = Color.Gray)
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(usuarios, key = { it.idUsuario }) { u ->
-                            ElevatedCard(
-                                colors = CardDefaults.elevatedCardColors(
-                                    containerColor = Color.White
-                                )
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(
-                                        "${u.nombre} (@${u.usuario})",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = HuertoHogarColors.onSurface
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text("Correo: ${u.correo}", style = MaterialTheme.typography.bodySmall)
-                                    Text("Tel: ${u.telefono}", style = MaterialTheme.typography.bodySmall)
-                                    Text("Dir: ${u.direccion}", style = MaterialTheme.typography.bodySmall)
-
-                                    Spacer(Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
-                                    ) {
-                                        TextButton(
-                                            onClick = {
-                                                editUser = u
-                                                editOpen = true
-                                            },
-                                            colors = ButtonDefaults.textButtonColors(
-                                                contentColor = HuertoHogarColors.primary
-                                            )
-                                        ) {
-                                            Text("Editar")
-                                        }
-                                    }
-                                    Spacer(Modifier.height(16.dp))
-
-                                    Button(
-                                        onClick = { navController.popBackStack() },
-                                        modifier = Modifier
-                                            .align(Alignment.CenterHorizontally)
-                                            .fillMaxWidth(0.6f)
-                                            .height(44.dp),
-                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.secondary, // Naranjo
-                                            contentColor = MaterialTheme.colorScheme.onSecondary   // Texto blanco
-                                        )
-                                    ) {
-                                        Text("Volver atrás")
-                                    }
-                                }
-                            }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(usuariosFiltrados, key = { it.uid }) { u ->
+                            UserCard(
+                                user = u,
+                                isMe = u.uid == currentAdmin?.uid,
+                                onEdit = { editUser = u; editOpen = true }
+                            )
                         }
                     }
                 }
             }
 
-            //  Diálogo de edición
             if (editOpen && editUser != null) {
                 EditUserDialog(
                     user = editUser!!,
-                    onDismiss = { editOpen = false; editUser = null },
+                    onDismiss = { editOpen = false },
                     onSave = { updated ->
-                        val res = UserRepository.updateProfile(
-                            idUsuario = updated.idUsuario,
-                            nombre = updated.nombre,
-                            telefono = updated.telefono,
-                            direccion = updated.direccion
-                        )
-                        res.onSuccess { saved ->
-                            val idx = usuarios.indexOfFirst { it.idUsuario == saved.idUsuario }
-                            if (idx != -1) usuarios[idx] = saved
-                            SessionManager.updateCurrent(saved)
-                            editOpen = false
-                            editUser = null
+                        scope.launch {
+                            UserRepository.updateProfile(updated.uid, updated.nombre, updated.telefono, updated.direccion)
+                                .onSuccess {
+                                    usuariosList = UserRepository.getAllUsers()
+                                    editOpen = false
+                                    Toast.makeText(context, "Usuario actualizado", Toast.LENGTH_SHORT).show()
+                                }
                         }
                     }
                 )
@@ -236,94 +117,37 @@ fun GestionUsuarioScreen(navController: NavController) {
 }
 
 @Composable
-private fun EditUserDialog(
-    user: Credential,
-    onDismiss: () -> Unit,
-    onSave: (Credential) -> Unit
-) {
+private fun UserCard(user: Credential, isMe: Boolean, onEdit: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(if (isMe) "${user.nombre} (Tú)" else user.nombre, fontWeight = FontWeight.Bold)
+                Text(user.correo, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+            IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
+        }
+    }
+}
+
+@Composable
+private fun EditUserDialog(user: Credential, onDismiss: () -> Unit, onSave: (Credential) -> Unit) {
     var nombre by remember { mutableStateOf(user.nombre) }
     var telefono by remember { mutableStateOf(user.telefono) }
     var direccion by remember { mutableStateOf(user.direccion) }
 
-    var nombreErr by remember { mutableStateOf<String?>(null) }
-    var telefonoErr by remember { mutableStateOf<String?>(null) }
-    var direccionErr by remember { mutableStateOf<String?>(null) }
-
-    val HuertoHogarColors = lightColorScheme(
-        primary = Color(0xFF4CAF50),
-        onPrimary = Color.White,
-        secondary = Color(0xFFFF9800),
-        onSecondary = Color.White,
-        surface = Color(0xFFFFF8F5),
-        onSurface = Color(0xFF3A3A3A)
-    )
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Editar usuario") },
+        title = { Text("Editar Usuario") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it; nombreErr = null },
-                    label = { Text("Nombre completo") },
-                    isError = nombreErr != null,
-                    supportingText = { if (nombreErr != null) Text(nombreErr!!) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = telefono,
-                    onValueChange = { t ->
-                        telefono = t.filter { it.isDigit() }.take(9)
-                        telefonoErr = null
-                    },
-                    label = { Text("Teléfono (9 dígitos)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    isError = telefonoErr != null,
-                    supportingText = { if (telefonoErr != null) Text(telefonoErr!!) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = direccion,
-                    onValueChange = { direccion = it; direccionErr = null },
-                    label = { Text("Dirección de entrega") },
-                    isError = direccionErr != null,
-                    supportingText = { if (direccionErr != null) Text(direccionErr!!) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") })
+                OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") })
+                OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") })
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    nombreErr = null; telefonoErr = null; direccionErr = null
-                    var ok = true
-                    if (nombre.isBlank()) { nombreErr = "Campo obligatorio"; ok = false }
-                    if (telefono.length != 9) { telefonoErr = "Debe tener 9 dígitos"; ok = false }
-                    if (direccion.isBlank()) { direccionErr = "Campo obligatorio"; ok = false }
-                    if (!ok) return@TextButton
-
-                    onSave(
-                        user.copy(
-                            nombre = nombre.trim(),
-                            telefono = telefono.trim(),
-                            direccion = direccion.trim()
-                        )
-                    )
-                },
-                colors = ButtonDefaults.textButtonColors(contentColor = HuertoHogarColors.primary)
-            ) {
+            Button(onClick = { onSave(user.copy(nombre = nombre, telefono = telefono, direccion = direccion)) }) {
                 Text("Guardar")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = HuertoHogarColors.secondary)
-            ) {
-                Text("Cancelar")
             }
         }
     )
