@@ -7,12 +7,13 @@ import com.example.cestaOganicaIA.data.database.CarritoItemEntity
 import com.example.cestaOganicaIA.data.database.PedidoEntity
 import com.example.cestaOganicaIA.data.repository.CarritoRepository
 import com.example.cestaOganicaIA.data.repository.PedidoRepository
+import com.example.cestaOganicaIA.data.session.SessionManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
+import kotlin.random.Random
 
 class CarritoViewModel(
     private val carritoRepo: CarritoRepository,
@@ -22,9 +23,9 @@ class CarritoViewModel(
     private val _items = MutableStateFlow<List<CarritoItemEntity>>(emptyList())
     val items: StateFlow<List<CarritoItemEntity>> = _items.asStateFlow()
 
-    val total: StateFlow<Int> = _items.map { lista ->
+    val total: StateFlow<Double> = _items.map { lista ->
         lista.sumOf { it.precioUnitario * it.cantidad }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0.0)
 
     val cantidadTotal: StateFlow<Int> = _items.map { lista ->
         lista.sumOf { it.cantidad }
@@ -33,111 +34,62 @@ class CarritoViewModel(
     private val _pedidoConfirmado = MutableStateFlow(false)
     val pedidoConfirmado: StateFlow<Boolean> = _pedidoConfirmado.asStateFlow()
 
-    fun cargarCarrito(uid: String) {
+    fun cargarCarrito(uid: Int) {
         viewModelScope.launch {
             carritoRepo.itemsDeUsuario(uid).collect { _items.value = it }
         }
     }
 
-    fun agregarAlCarrito(uid: String, nombre: String, precio: Int, imagenResId: Int, cantidad: Int) {
+    fun agregarAlCarrito(uid: Int, nombre: String, precio: Int, imagenResId: Int, cantidad: Int) {
         viewModelScope.launch {
             carritoRepo.agregarOActualizar(uid, nombre, precio, imagenResId, cantidad)
         }
     }
 
-    fun cambiarCantidad(uid: String, itemId: String, nuevaCantidad: Int) {
-        viewModelScope.launch {
-            carritoRepo.cambiarCantidad(uid, itemId, nuevaCantidad)
-        }
+    fun cambiarCantidad(item: CarritoItemEntity, nuevaCantidad: Int) {
+        viewModelScope.launch { carritoRepo.cambiarCantidad(item, nuevaCantidad) }
     }
 
-    fun eliminarItem(uid: String, itemId: String) {
-        viewModelScope.launch {
-            carritoRepo.eliminarItem(uid, itemId)
-        }
+    fun eliminarItem(item: CarritoItemEntity) {
+        viewModelScope.launch { carritoRepo.eliminarItem(item) }
     }
 
-    fun vaciarCarrito(uid: String) {
-        viewModelScope.launch {
-            carritoRepo.vaciarCarrito(uid)
-        }
+    fun vaciarCarrito(uid: Int) {
+        viewModelScope.launch { carritoRepo.vaciarCarrito(uid) }
     }
 
     fun confirmarPedido(
-        uid: String,
+        uid: Int,
         fechaEntrega: String,
         direccion: String,
-        nombre: String = "",
-        correo: String = "",
-        telefono: String = "",
         onStockDescontar: (String, Int) -> Unit
     ) {
         viewModelScope.launch {
+            val user = SessionManager.currentUser
+            val ordenId = Random.nextInt(1000, 9999)
             val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            val commonOrderId = UUID.randomUUID().toString().substring(0, 8).uppercase()
             
             _items.value.forEach { item ->
                 pedidoRepo.confirmarPedido(
                     PedidoEntity(
-                        ordenId = commonOrderId,
+                        ordenId = ordenId,
                         usuarioId = uid,
+                        nombreContacto = user?.nombre ?: "Invitado",
+                        correoContacto = user?.correo ?: "",
                         nombreProducto = item.nombreProducto,
                         precioUnitario = item.precioUnitario,
                         cantidad = item.cantidad,
                         total = item.precioUnitario * item.cantidad,
+                        imagenResId = item.imagenResId,
                         fechaEntrega = fechaEntrega,
                         direccionEntrega = direccion,
                         fechaPedido = fecha,
-                        estado = "Confirmado",
-                        imagenResId = item.imagenResId,
-                        nombreContacto = nombre,
-                        correoContacto = correo,
-                        telefonoContacto = telefono
+                        estado = "Confirmado"
                     )
                 )
                 onStockDescontar(item.nombreProducto, item.cantidad)
             }
             carritoRepo.vaciarCarrito(uid)
-            _pedidoConfirmado.value = true
-        }
-    }
-
-    fun confirmarCompraDirecta(
-        uid: String,
-        nombreProd: String,
-        precio: Int,
-        cantidad: Int,
-        imagenResId: Int,
-        fechaEntrega: String,
-        direccion: String,
-        nombreCont: String = "",
-        correo: String = "",
-        telefono: String = "",
-        onStockDescontar: (String, Int) -> Unit
-    ) {
-        viewModelScope.launch {
-            val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            val orderId = UUID.randomUUID().toString().substring(0, 8).uppercase()
-            
-            pedidoRepo.confirmarPedido(
-                PedidoEntity(
-                    ordenId = orderId,
-                    usuarioId = uid,
-                    nombreProducto = nombreProd,
-                    precioUnitario = precio,
-                    cantidad = cantidad,
-                    total = precio * cantidad,
-                    fechaEntrega = fechaEntrega,
-                    direccionEntrega = direccion,
-                    fechaPedido = fecha,
-                    estado = "Confirmado",
-                    imagenResId = imagenResId,
-                    nombreContacto = nombreCont,
-                    correoContacto = correo,
-                    telefonoContacto = telefono
-                )
-            )
-            onStockDescontar(nombreProd, cantidad)
             _pedidoConfirmado.value = true
         }
     }

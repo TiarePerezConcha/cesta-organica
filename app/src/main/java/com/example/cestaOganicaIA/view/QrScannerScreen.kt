@@ -14,6 +14,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.cestaOganicaIA.viewmodel.QrViewModel
 import com.example.cestaOganicaIA.utils.QrScanner
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
 
 @Composable
 fun QrScannerScreen(

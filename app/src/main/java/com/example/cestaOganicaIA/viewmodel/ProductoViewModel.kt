@@ -2,7 +2,6 @@ package com.example.cestaOganicaIA.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-
 import kotlinx.coroutines.launch
 
 // Esta clase se encargará de la lógica de negocio de los productos.

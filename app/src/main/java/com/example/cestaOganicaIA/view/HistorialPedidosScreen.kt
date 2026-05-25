@@ -1,91 +1,178 @@
 package com.example.cestaOganicaIA.view
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.example.cestaOganicaIA.data.database.PedidoEntity
+import com.example.cestaOganicaIA.data.database.PedidoHistorial
+import com.example.cestaOganicaIA.data.model.Producto
 import com.example.cestaOganicaIA.data.session.SessionManager
-import com.example.cestaOganicaIA.viewmodel.HistorialViewModel
-import com.example.cestaOganicaIA.ui.shared.AppRoutes
-import com.example.cestaOganicaIA.ui.shared.HuertoHogarTheme
-import java.text.NumberFormat
-import java.util.Locale
+import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+
+import androidx.navigation.NavController
+import com.example.cestaOganicaIA.data.model.Credential
+import com.example.cestaOganicaIA.viewmodel.DrawerMenuViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialPedidosScreen(
+
+    username: String,
     navController: NavController,
-    viewModel: HistorialViewModel
-) {
-    val user = SessionManager.currentUser
-    val pedidos by viewModel.pedidos.collectAsState()
-    val displayName = user?.nombre?.takeIf { it.isNotBlank() } ?: user?.usuario ?: "Usuario"
+    viewModel: DrawerMenuViewModel
+){
+    val historial = PedidoHistorial.pedidos
 
-    LaunchedEffect(user) {
-        user?.let { viewModel.cargarPedidos(it.uid) } // Corregido: usa uid (String)
-    }
+    // Estado que viene del ViewModel
+    val categoriasState = viewModel.categorias.value
 
-    // Agrupamos los pedidos por ordenId para que compras de un mismo carrito salgan juntas
-    val pedidosAgrupados = remember(pedidos) {
-        pedidos.groupBy { it.ordenId }
-    }
+    val huertoHogarColors = lightColorScheme(
+        primary = Color(0xFF4CAF50),
+        onPrimary = Color.White,
+        secondary = Color(0xFFFF9800),
+        onSecondary = Color.White,
+        surface = Color(0xFFFFF8F5),
+        onSurface = Color(0xFF3A3A3A)
+    )
+    val current = SessionManager.currentUser
+    val displayName = current?.nombre?.takeIf { it.isNotBlank() } ?: current?.usuario ?: username
+    val isAdmin =
+        (current?.idUsuario == Credential.Admin.idUsuario) ||
+                (current?.usuario?.equals(Credential.Admin.usuario, ignoreCase = true) == true)
 
-    HuertoHogarTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(text = "Mis Compras", style = MaterialTheme.typography.titleMedium)
-                            Text(text = displayName, style = MaterialTheme.typography.bodySmall)
+    var menuOpen by remember { mutableStateOf(false) }
+
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "Perfil: $displayName",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        current?.correo?.takeIf { it.isNotBlank() }?.let { correo ->
+                            Text(
+                                text = correo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                            )
                         }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigate(AppRoutes.CATALOGO) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menú de perfil")
+                    }
+
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Mi Perfil") },
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                navController.navigate("gestion_perfil")
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Historial de pedidos") },
+                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                navController.navigate("historial_pedidos")
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Block") },
+                            leadingIcon = { Icon(Icons.Default.Apps, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                navController.navigate("block")
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Carrito (próximamente)") },
+                            leadingIcon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                navController.navigate("carrito")
+                            }
+                        )
+
+                        if (isAdmin) {
+                            DropdownMenuItem(
+                                text = { Text("Gestionar usuarios") },
+                                leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    navController.navigate("gestion_usuarios")
+                                }
+                            )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+
+                        HorizontalDivider()
+
+                        DropdownMenuItem(
+                            text = { Text("Cerrar sesión") },
+                            leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                SessionManager.currentUser = null // Assuming logout means clearing current user
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
+            )
+        }
+    ) { padding ->
+        if (historial.isEmpty()) {
+            Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Aún no hay pedidos registrados.")
             }
-        ) { padding ->
-            if (pedidos.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                        Text("No tienes pedidos registrados", color = Color.Gray)
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(pedidosAgrupados.entries.toList(), key = { it.key }) { entry ->
-                        OrdenCard(ordenId = entry.key, items = entry.value)
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Como los id de Producto pueden repetirse (0 por defecto),
+                // usamos un key estable alternativo:
+                items(historial, key = { it.hashCode() }) { pedido ->
+                    PedidoCard(pedido)
                 }
             }
         }
@@ -93,109 +180,19 @@ fun HistorialPedidosScreen(
 }
 
 @Composable
-private fun OrdenCard(ordenId: String, items: List<PedidoEntity>) {
-    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
-    val primerItem = items.first()
-    val totalOrden = items.sumOf { it.total }
-
+private fun PedidoCard(pedido: Producto) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            // Cabecera de la Orden
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ORDEN #$ordenId", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
-                Text(primerItem.fechaPedido, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            
-            // Mostrar Nombre del Cliente si existe (especialmente para invitados)
-            val clienteNombre = primerItem.nombreContacto.takeIf { it.isNotBlank() } ?: "Cliente Registrado"
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("Recibe: $clienteNombre", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Lista de productos dentro de esta orden
-            items.forEach { pedido ->
-                Row(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (pedido.imagenResId != 0) {
-                        Image(
-                            painter = painterResource(pedido.imagenResId),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(Color.White, RoundedCornerShape(4.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(pedido.nombreProducto, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text("Cant: ${pedido.cantidad} • ${formatoMoneda.format(pedido.precioUnitario)} c/u", fontSize = 12.sp, color = Color.Gray)
-                    }
-                    Text(formatoMoneda.format(pedido.total), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            
-            // Información de entrega (compartida por la orden)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DateRange, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Entrega programada: ${primerItem.fechaEntrega}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Place, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                    Spacer(Modifier.width(8.dp))
-                    Text(primerItem.direccionEntrega, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-
-                // Correo y Teléfono si es Invitado
-                if (primerItem.usuarioId == "INVITADO") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.ContactPhone, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                        Spacer(Modifier.width(8.dp))
-                        Text("${primerItem.correoContacto} | ${primerItem.telefonoContacto}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    }
-                }
-            }
-            
-            Spacer(Modifier.height(12.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text(
-                        text = primerItem.estado.uppercase(),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    text = "TOTAL: ${formatoMoneda.format(totalOrden)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("🎉 Pedido Realizado 🎉", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp))
+            Text("• Producto: ${pedido.nombre}")
+            Text("• Cantidad: ${pedido.cantidad}")
+            Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp))
+            Text("Total pagado: ${pedido.precio}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
