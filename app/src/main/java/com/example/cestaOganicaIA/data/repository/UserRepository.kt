@@ -1,145 +1,95 @@
 package com.example.cestaOganicaIA.data.repository
 
 import com.example.cestaOganicaIA.data.model.Credential
-import kotlin.inc
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
-object UserRepository {
+class UserRepository {
 
-    private val users = mutableListOf(Credential.Admin)
-    private var nextId = (Credential.Admin.idUsuario + 1)
-
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
+    private val collection = db.collection("usuarios")
 
     private fun norm(s: String) = s.trim().lowercase()
 
-    private fun isStrongPassword(s: String): Boolean {
-        if (s.length < 8) return false
-        val hasLetter = s.any { it.isLetter() }
-        val hasDigit  = s.any { it.isDigit() }
-        return hasLetter && hasDigit
+    // Registro en Firebase
+    suspend fun register(user: Credential): Result<Credential> {
+        return try {
+            // 1. Crear usuario en Firebase Auth
+            val authResult = auth.createUserWithEmailAndPassword(user.correo, user.password).await()
+            val uid = authResult.user?.uid ?: return Result.failure(Exception("No se pudo obtener el UID"))
+
+            // 2. Guardar datos adicionales en Firestore
+            val userWithUid = user.copy(uid = uid, password = "") // No guardamos la clave en Firestore por seguridad
+            collection.document(uid).set(userWithUid).await()
+
+            Result.success(userWithUid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
-    private fun isValidEmail(s: String): Boolean {
-        val emailRegex = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
-        return s.matches(emailRegex)
+    // Login en Firebase
+    suspend fun login(usernameOrEmail: String, password: String): Result<Credential> {
+        return try {
+            // Si es un correo, intentamos login directo
+            val email = if (usernameOrEmail.contains("@")) {
+                usernameOrEmail
+            } else {
+                // Si es un nombre de usuario, debemos buscar el correo en Firestore primero
+                val snapshot = collection.whereEqualTo("usuario", usernameOrEmail).get().await()
+                if (snapshot.isEmpty) return Result.failure(Exception("Usuario no encontrado"))
+                snapshot.documents.first().getString("correo") ?: return Result.failure(Exception("Correo no encontrado"))
+            }
+
+            val authResult = auth.signInWithEmailAndPassword(email, password).await()
+            val uid = authResult.user?.uid ?: return Result.failure(Exception("Login fallido"))
+
+            // Obtener datos del perfil desde Firestore
+            val doc = collection.document(uid).get().await()
+            val userData = doc.toObject(Credential::class.java) ?: return Result.failure(Exception("Datos de usuario no encontrados"))
+            
+            Result.success(userData)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
-    private fun isPhoneCL9(s: String): Boolean {
-        val digits = s.filter { it.isDigit() }
-        return digits.length == 9
+    // Obtener todos los usuarios de Firestore
+    suspend fun getAllUsers(): List<Credential> {
+        return try {
+            val snapshot = collection.get().await()
+            snapshot.toObjects(Credential::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
-    //  Registro
-    fun register(user: Credential): Result<Credential> {
-        val uNorm = norm(user.usuario)
-        val cNorm = norm(user.correo)
-
-        if (users.any { norm(it.usuario) == uNorm }) {
-            return Result.failure(IllegalArgumentException("El usuario ya existe"))
-        }
-        if (users.any { norm(it.correo) == cNorm }) {
-            return Result.failure(IllegalArgumentException("Ya existe una cuenta con ese correo"))
-        }
-
-        if (!isValidEmail(user.correo)) return Result.failure(IllegalArgumentException("Correo inválido"))
-        if (!isPhoneCL9(user.telefono)) return Result.failure(IllegalArgumentException("El teléfono debe tener 9 dígitos"))
-        if (user.nombre.isBlank() || user.direccion.isBlank()) {
-            return Result.failure(IllegalArgumentException("Nombre y dirección son obligatorios"))
-        }
-        if (!isStrongPassword(user.password)) {
-            return Result.failure(IllegalArgumentException("La contraseña no cumple los requisitos"))
-        }
-
-        val withId = user.copy(
-            idUsuario = nextId++,
-            usuario = user.usuario.trim(),
-            correo = user.correo.trim()
-        )
-        users += withId
-        return Result.success(withId)
-    }
-
-    // Login
-    fun login(usernameOrEmail: String, password: String): Result<Credential> {
-        val q = norm(usernameOrEmail)
-        val u = users.firstOrNull {
-            (norm(it.usuario) == q || norm(it.correo) == q) && it.password == password
-        }
-        return if (u != null) Result.success(u)
-        else Result.failure(IllegalArgumentException("Credenciales inválidas"))
-    }
-
-    // Olvidé contraseña
-    fun updatePassword(usernameOrEmail: String, newPassword: String): Result<Unit> {
-        val q = norm(usernameOrEmail)
-        val idx = users.indexOfFirst {
-            norm(it.usuario) == q || norm(it.correo) == q
-        }
-        if (idx == -1) return Result.failure(IllegalArgumentException("Usuario/correo no existe"))
-        if (!isStrongPassword(newPassword)) {
-            return Result.failure(IllegalArgumentException("La nueva contraseña no cumple los requisitos"))
-        }
-        users[idx] = users[idx].copy(password = newPassword)
-        return Result.success(Unit)
-    }
-
-    //  Actualización completa
-    fun update(user: Credential): Result<Credential> {
-        val idx = users.indexOfFirst { it.idUsuario == user.idUsuario }
-        if (idx == -1) return Result.failure(IllegalArgumentException("Usuario no encontrado"))
-
-        val uNorm = norm(user.usuario)
-        val cNorm = norm(user.correo)
-
-        if (users.any { it.idUsuario != user.idUsuario && norm(it.usuario) == uNorm }) {
-            return Result.failure(IllegalArgumentException("El nombre de usuario ya está en uso"))
-        }
-        if (users.any { it.idUsuario != user.idUsuario && norm(it.correo) == cNorm }) {
-            return Result.failure(IllegalArgumentException("Ya existe una cuenta con ese correo"))
-        }
-
-        if (!isValidEmail(user.correo)) return Result.failure(IllegalArgumentException("Correo inválido"))
-        if (!isPhoneCL9(user.telefono)) return Result.failure(IllegalArgumentException("El teléfono debe tener 9 dígitos"))
-        if (user.nombre.isBlank() || user.direccion.isBlank()) {
-            return Result.failure(IllegalArgumentException("Nombre y dirección son obligatorios"))
-        }
-        if (!isStrongPassword(user.password)) {
-            return Result.failure(IllegalArgumentException("La contraseña no cumple los requisitos"))
-        }
-
-        val isAdmin = users[idx].idUsuario == Credential.Admin.idUsuario
-        val finalUser = if (isAdmin) {
-            user.copy(usuario = Credential.Admin.usuario) // proteger username admin
-        } else {
-            user.copy(
-                usuario = user.usuario.trim(),
-                correo = user.correo.trim()
+    // Actualizar perfil en Firestore
+    suspend fun updateProfile(uid: String, nombre: String, telefono: String, direccion: String): Result<Credential> {
+        return try {
+            val updates = mapOf(
+                "nombre" to nombre,
+                "telefono" to telefono,
+                "direccion" to direccion
             )
+            collection.document(uid).update(updates).await()
+            
+            val doc = collection.document(uid).get().await()
+            val updated = doc.toObject(Credential::class.java) ?: return Result.failure(Exception("Error al recargar datos"))
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-
-        users[idx] = finalUser
-        return Result.success(finalUser)
     }
 
-    //Actualización de perfil
-    fun updateProfile(idUsuario: Int, nombre: String, telefono: String, direccion: String): Result<Credential> {
-        val idx = users.indexOfFirst { it.idUsuario == idUsuario }
-        if (idx == -1) return Result.failure(IllegalArgumentException("Usuario no encontrado"))
-
-        if (nombre.isBlank()) return Result.failure(IllegalArgumentException("El nombre es obligatorio"))
-        if (direccion.isBlank()) return Result.failure(IllegalArgumentException("La dirección es obligatoria"))
-        if (!isPhoneCL9(telefono)) return Result.failure(IllegalArgumentException("El teléfono debe tener 9 dígitos"))
-
-        val cur = users[idx]
-        val updated = cur.copy(
-            nombre = nombre,
-            telefono = telefono.filter { it.isDigit() }.take(9),
-            direccion = direccion
-        )
-        users[idx] = updated
-        return Result.success(updated)
+    suspend fun getById(uid: String): Credential? {
+        return try {
+            val doc = collection.document(uid).get().await()
+            doc.toObject(Credential::class.java)
+        } catch (e: Exception) {
+            null
+        }
     }
-
-    // Utilidades
-    fun getById(id: Int): Credential? = users.firstOrNull { it.idUsuario == id }
-    fun all(): List<Credential> = users.toList()
 }

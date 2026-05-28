@@ -3,7 +3,7 @@ package com.example.cestaOganicaIA.viewmodel
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.cestaOganicaIA.data.model.Categoria
-import com.example.cestaOganicaIA.data.model.ProductoItem
+import com.example.cestaOganicaIA.data.model.CatalogoItem
 import com.example.cestaOganicaIA.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,21 +11,21 @@ import androidx.compose.material.icons.filled.*
 // Define la lista ORIGINAL fuera, como una constante privada. Esta es la "fuente de la verdad" inicial.
 private val listaInicial = listOf(
     Categoria("Frutas", Icons.Default.Agriculture, listOf(
-        ProductoItem("Manzanas Fuji", "1200", "Manzanas Fuji crujientes y dulces...", 50, R.drawable.manzana_fuji),
-        ProductoItem("Naranjas Valencia", "1000", "Jugosas y ricas en vitamina C...", 30, R.drawable.naranja_valencia),
-        ProductoItem("Plátanos Cavendish", "800", "Plátanos maduros y dulces...", 100, R.drawable.platano_cavendish)
+        CatalogoItem("Manzanas Fuji", 1200, "Manzanas Fuji crujientes y dulces...", 50, R.drawable.manzana_fuji, "Frutas"),
+        CatalogoItem("Naranjas Valencia", 1000, "Jugosas y ricas en vitamina C...", 30, R.drawable.naranja_valencia, "Frutas"),
+        CatalogoItem("Plátanos Cavendish", 800, "Plátanos maduros y dulces...", 100, R.drawable.platano_cavendish, "Frutas")
     )),
     Categoria("Verduras", Icons.Default.Grass, listOf(
-        ProductoItem("Zanahorias Orgánicas", "900", "Zanahorias crujientes cultivadas sin pesticidas...", 40, R.drawable.zanahorias),
-        ProductoItem("Espinacas Frescas", "700", "Espinacas frescas y nutritivas...", 25, R.drawable.espinaca),
-        ProductoItem("Pimientos Tricolores", "1500", "Pimientos rojos, amarillos y verdes...", 20, R.drawable.pimientos)
+        CatalogoItem("Zanahorias Orgánicas", 900, "Zanahorias crujientes cultivadas sin pesticidas...", 40, R.drawable.zanahorias, "Verduras"),
+        CatalogoItem("Espinacas Frescas", 700, "Espinacas frescas y nutritivas...", 25, R.drawable.espinaca, "Verduras"),
+        CatalogoItem("Pimientos Tricolores", 1500, "Pimientos rojos, amarillos y verdes...", 20, R.drawable.pimientos, "Verduras")
     )),
     Categoria("Orgánicos", Icons.Default.Eco, listOf(
-        ProductoItem("Miel Orgánica", "5000", "Miel pura y orgánica producida por apicultores locales...", 15, R.drawable.miel_organica),
-        ProductoItem("Quinua Orgánica", "5050", "Superalimento rico en proteínas y fibra, libre de gluten.", 35, R.drawable.quinua_organica)
+        CatalogoItem("Miel Orgánica", 5000, "Miel pura y orgánica producida por apicultores locales...", 15, R.drawable.miel_organica, "Orgánicos"),
+        CatalogoItem("Quinua Orgánica", 5050, "Superalimento rico en proteínas y fibra, libre de gluten.", 35, R.drawable.quinua_organica, "Orgánicos")
     )),
     Categoria("Lácteos", Icons.Default.Icecream, listOf(
-        ProductoItem("Leche Entera", "1500", "Leche fresca y cremosa de vacas de pastoreo libre.", 40, R.drawable.leche_entera)
+        CatalogoItem("Leche Entera", 1500, "Leche fresca y cremosa de vacas de pastoreo libre.", 40, R.drawable.leche_entera, "Lácteos")
     ))
 )
 

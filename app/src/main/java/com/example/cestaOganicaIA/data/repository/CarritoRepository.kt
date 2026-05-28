@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 class CarritoRepository(private val carritoDao: CarritoDao) {
 
-    fun itemsDeUsuario(uid: Int): Flow<List<CarritoItemEntity>> = carritoDao.obtenerPorUsuario(uid)
+    fun itemsDeUsuario(uid: String): Flow<List<CarritoItemEntity>> = carritoDao.obtenerPorUsuario(uid)
 
-    suspend fun agregarOActualizar(uid: Int, nombre: String, precio: Int, imagenResId: Int, cantidad: Int) {
+    suspend fun agregarOActualizar(uid: String, nombre: String, precio: Double, imagenResId: Int, cantidad: Int) {
         val existente = carritoDao.buscarItem(uid, nombre)
         if (existente != null) {
             carritoDao.actualizar(existente.copy(cantidad = existente.cantidad + cantidad))
@@ -17,7 +17,7 @@ class CarritoRepository(private val carritoDao: CarritoDao) {
                 CarritoItemEntity(
                     usuarioId = uid,
                     nombreProducto = nombre,
-                    precioUnitario = precio.toDouble(),
+                    precioUnitario = precio,
                     cantidad = cantidad,
                     imagenResId = imagenResId
                 )
@@ -37,7 +37,7 @@ class CarritoRepository(private val carritoDao: CarritoDao) {
         carritoDao.eliminar(item)
     }
 
-    suspend fun vaciarCarrito(uid: Int) {
+    suspend fun vaciarCarrito(uid: String) {
         carritoDao.vaciar(uid)
     }
 }

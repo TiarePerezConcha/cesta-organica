@@ -16,22 +16,8 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.example.cestaOganicaIA" />
-                  <option name="mobileSdkAppId" value="1:56809023854:android:b14dc5bc7379c1f7a6b97f" />
-                  <option name="projectId" value="cestaorganica-962ae" />
-                  <option name="projectNumber" value="56809023854" />
-                </ConnectionSetting>
-              </option>
-              <option name="failureTypes">
-                <list>
-                  <option value="FATAL" />
-                  <option value="ANR" />
-                </list>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
-              <option name="timeIntervalDays" value="NINETY_DAYS" />
+              <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />
             </InsightsFilterSettings>
           </value>

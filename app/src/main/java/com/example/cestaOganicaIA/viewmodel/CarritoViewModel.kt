@@ -7,17 +7,18 @@ import com.example.cestaOganicaIA.data.database.CarritoItemEntity
 import com.example.cestaOganicaIA.data.database.PedidoEntity
 import com.example.cestaOganicaIA.data.repository.CarritoRepository
 import com.example.cestaOganicaIA.data.repository.PedidoRepository
-import com.example.cestaOganicaIA.data.session.SessionManager
+import com.example.cestaOganicaIA.data.repository.ProductoRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.random.Random
+import java.util.UUID
 
 class CarritoViewModel(
     private val carritoRepo: CarritoRepository,
-    private val pedidoRepo: PedidoRepository
+    private val pedidoRepo: PedidoRepository,
+    private val productoRepo: ProductoRepository
 ) : ViewModel() {
 
     private val _items = MutableStateFlow<List<CarritoItemEntity>>(emptyList())
@@ -34,62 +35,123 @@ class CarritoViewModel(
     private val _pedidoConfirmado = MutableStateFlow(false)
     val pedidoConfirmado: StateFlow<Boolean> = _pedidoConfirmado.asStateFlow()
 
-    fun cargarCarrito(uid: Int) {
+    fun cargarCarrito(uid: String) {
         viewModelScope.launch {
             carritoRepo.itemsDeUsuario(uid).collect { _items.value = it }
         }
     }
 
-    fun agregarAlCarrito(uid: Int, nombre: String, precio: Int, imagenResId: Int, cantidad: Int) {
+    fun agregarAlCarrito(uid: String, nombre: String, precio: Double, imagenResId: Int, cantidad: Int) {
         viewModelScope.launch {
             carritoRepo.agregarOActualizar(uid, nombre, precio, imagenResId, cantidad)
         }
     }
 
-    fun cambiarCantidad(item: CarritoItemEntity, nuevaCantidad: Int) {
-        viewModelScope.launch { carritoRepo.cambiarCantidad(item, nuevaCantidad) }
+    fun cambiarCantidad(uid: String, itemLocalId: Int, nuevaCantidad: Int) {
+        viewModelScope.launch {
+            // Buscamos específicamente por el ID único de la base de datos local
+            val item = _items.value.find { it.idLocal == itemLocalId }
+            if (item != null) {
+                if (nuevaCantidad > 0) {
+                    carritoRepo.cambiarCantidad(item, nuevaCantidad)
+                } else {
+                    carritoRepo.eliminarItem(item)
+                }
+            }
+        }
     }
 
-    fun eliminarItem(item: CarritoItemEntity) {
-        viewModelScope.launch { carritoRepo.eliminarItem(item) }
+    fun eliminarItem(uid: String, itemLocalId: Int) {
+        viewModelScope.launch {
+            val item = _items.value.find { it.idLocal == itemLocalId }
+            if (item != null) {
+                carritoRepo.eliminarItem(item)
+            }
+        }
     }
 
-    fun vaciarCarrito(uid: Int) {
+    fun vaciarCarrito(uid: String) {
         viewModelScope.launch { carritoRepo.vaciarCarrito(uid) }
     }
 
     fun confirmarPedido(
-        uid: Int,
+        uid: String,
         fechaEntrega: String,
         direccion: String,
+        nombre: String,
+        correo: String,
+        telefono: String,
         onStockDescontar: (String, Int) -> Unit
     ) {
         viewModelScope.launch {
-            val user = SessionManager.currentUser
-            val ordenId = Random.nextInt(1000, 9999)
-            val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+            val ordenId = UUID.randomUUID().toString().take(8).uppercase()
+            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
             
             _items.value.forEach { item ->
                 pedidoRepo.confirmarPedido(
                     PedidoEntity(
                         ordenId = ordenId,
                         usuarioId = uid,
-                        nombreContacto = user?.nombre ?: "Invitado",
-                        correoContacto = user?.correo ?: "",
+                        nombreContacto = nombre,
+                        correoContacto = correo,
                         nombreProducto = item.nombreProducto,
-                        precioUnitario = item.precioUnitario,
+                        precioUnitario = item.precioUnitario.toInt(),
                         cantidad = item.cantidad,
-                        total = item.precioUnitario * item.cantidad,
+                        total = (item.precioUnitario * item.cantidad).toInt(),
                         imagenResId = item.imagenResId,
                         fechaEntrega = fechaEntrega,
                         direccionEntrega = direccion,
-                        fechaPedido = fecha,
+                        fechaPedido = fechaActual,
                         estado = "Confirmado"
                     )
                 )
+                // Descontar de la base de datos Room
+                productoRepo.descontarStock(item.nombreProducto, item.cantidad)
+                // Mantener compatibilidad con el callback si se usa para otros estados en memoria
                 onStockDescontar(item.nombreProducto, item.cantidad)
             }
             carritoRepo.vaciarCarrito(uid)
+            _pedidoConfirmado.value = true
+        }
+    }
+
+    fun confirmarCompraDirecta(
+        uid: String,
+        nombreProducto: String,
+        precio: Double,
+        cantidad: Int,
+        imagenResId: Int,
+        fechaEntrega: String,
+        direccion: String,
+        nombreContacto: String,
+        correoContacto: String,
+        telefonoContacto: String,
+        onStockDescontar: (String, Int) -> Unit
+    ) {
+        viewModelScope.launch {
+            val ordenId = UUID.randomUUID().toString().take(8).uppercase()
+            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+            
+            pedidoRepo.confirmarPedido(
+                PedidoEntity(
+                    ordenId = ordenId,
+                    usuarioId = uid,
+                    nombreContacto = nombreContacto,
+                    correoContacto = correoContacto,
+                    nombreProducto = nombreProducto,
+                    precioUnitario = precio.toInt(),
+                    cantidad = cantidad,
+                    total = (precio * cantidad).toInt(),
+                    imagenResId = imagenResId,
+                    fechaEntrega = fechaEntrega,
+                    direccionEntrega = direccion,
+                    fechaPedido = fechaActual,
+                    estado = "Confirmado"
+                )
+            )
+            // Descontar de Room
+            productoRepo.descontarStock(nombreProducto, cantidad)
+            onStockDescontar(nombreProducto, cantidad)
             _pedidoConfirmado.value = true
         }
     }
@@ -98,10 +160,11 @@ class CarritoViewModel(
 
     class Factory(
         private val carritoRepo: CarritoRepository,
-        private val pedidoRepo: PedidoRepository
+        private val pedidoRepo: PedidoRepository,
+        private val productoRepo: ProductoRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            CarritoViewModel(carritoRepo, pedidoRepo) as T
+            CarritoViewModel(carritoRepo, pedidoRepo, productoRepo) as T
     }
 }

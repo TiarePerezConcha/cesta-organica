@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,9 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.cestaOganicaIA.data.model.Credential
 import com.example.cestaOganicaIA.data.repository.UserRepository
@@ -28,7 +25,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GestionUsuarioScreen(navController: NavController) {
+fun GestionUsuarioScreen(navController: NavController, userRepository: UserRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentAdmin = SessionManager.currentUser
@@ -38,9 +35,9 @@ fun GestionUsuarioScreen(navController: NavController) {
     var editOpen by remember { mutableStateOf(false) }
     var editUser by remember { mutableStateOf<Credential?>(null) }
 
-    // Cargar usuarios desde Firestore
+    // Cargar usuarios desde el repositorio persistente
     LaunchedEffect(Unit) {
-        usuariosList = UserRepository.getAllUsers()
+        usuariosList = userRepository.getAllUsers()
     }
 
     val usuariosFiltrados = usuariosList.filter {
@@ -102,9 +99,9 @@ fun GestionUsuarioScreen(navController: NavController) {
                     onDismiss = { editOpen = false },
                     onSave = { updated ->
                         scope.launch {
-                            UserRepository.updateProfile(updated.uid, updated.nombre, updated.telefono, updated.direccion)
+                            userRepository.updateProfile(updated.uid, updated.nombre, updated.telefono, updated.direccion)
                                 .onSuccess {
-                                    usuariosList = UserRepository.getAllUsers()
+                                    usuariosList = userRepository.getAllUsers()
                                     editOpen = false
                                     Toast.makeText(context, "Usuario actualizado", Toast.LENGTH_SHORT).show()
                                 }

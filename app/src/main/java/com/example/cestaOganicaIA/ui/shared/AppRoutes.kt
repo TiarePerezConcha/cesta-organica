@@ -15,7 +15,7 @@ object AppRoutes {
     const val FAVORITOS         = "favoritos"
     const val PERFIL            = "perfil"
     const val INFO              = "info"
-    const val QR_SCANNER        = "qr_scanner"
+    const val BLOCK             = "block"
 
     // Admin
     const val ADMIN_USUARIOS    = "admin_usuarios"

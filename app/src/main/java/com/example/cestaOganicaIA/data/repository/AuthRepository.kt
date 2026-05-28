@@ -1,26 +1,17 @@
 package com.example.cestaOganicaIA.data.repository
 
 import com.example.cestaOganicaIA.data.model.Credential
+import com.example.cestaOganicaIA.data.session.SessionManager
 
-class AuthRepository(
-    private val validCredential: Credential = Credential.Admin
-) {
+class AuthRepository(private val userRepository: UserRepository) {
 
-    fun login(usernameOrEmail: String, password: String): Boolean {
-
-        val userMatch = UserRepository.all().any {
-            (it.usuario.equals(usernameOrEmail, ignoreCase = true) ||
-                    it.correo.equals(usernameOrEmail, ignoreCase = true)) &&
-                    it.password == password
+    /**
+     * Intenta iniciar sesión comparando con la base de datos local de usuarios.
+     */
+    suspend fun login(usernameOrEmail: String, password: String): Result<Credential> {
+        val result = userRepository.login(usernameOrEmail, password)
+        return result.onSuccess { userMatch ->
+            SessionManager.login(userMatch)
         }
-
-
-        val adminMatch = (
-                usernameOrEmail.equals(validCredential.usuario, ignoreCase = true) &&
-                        password == validCredential.password
-                )
-
-
-        return userMatch || adminMatch
     }
 }

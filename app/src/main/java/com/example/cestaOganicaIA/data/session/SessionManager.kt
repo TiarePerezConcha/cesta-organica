@@ -18,4 +18,6 @@ object SessionManager {
     }
 
     val isLoggedIn: Boolean get() = currentUser != null
+    val isGuest: Boolean get() = currentUser?.uid == "INVITADO"
+    val isAdmin: Boolean get() = currentUser?.rol == "admin"
 }

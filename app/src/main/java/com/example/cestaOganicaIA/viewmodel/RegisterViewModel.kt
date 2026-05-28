@@ -4,12 +4,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cestaOganicaIA.data.model.Credential
 import com.example.cestaOganicaIA.data.repository.UserRepository
 import kotlinx.coroutines.launch
 
-class RegisterViewModel : ViewModel() {
+class RegisterViewModel(private val repository: UserRepository) : ViewModel() {
     
     var isLoading by mutableStateOf(false)
         private set
@@ -32,7 +33,7 @@ class RegisterViewModel : ViewModel() {
                 password = clave
             )
 
-            val result = UserRepository.register(newUser)
+            val result = repository.register(newUser)
             
             result.onSuccess {
                 registrationSuccess = true
@@ -45,4 +46,10 @@ class RegisterViewModel : ViewModel() {
     }
 
     fun resetError() { errorMsg = null }
+
+    class Factory(private val repository: UserRepository) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            RegisterViewModel(repository) as T
+    }
 }

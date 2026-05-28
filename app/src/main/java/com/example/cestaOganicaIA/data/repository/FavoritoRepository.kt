@@ -9,11 +9,15 @@ import kotlinx.coroutines.tasks.await
 
 class FavoritoRepository {
     private val db = FirebaseFirestore.getInstance()
-    private val favoritosCollection = db.collection("favoritos")
+    private val collection = db.collection("favoritos")
 
-    /** Obtiene los favoritos del usuario en tiempo real */
+    /** Obtiene los favoritos del usuario desde Firebase Firestore */
     fun favoritosDeUsuario(uid: String): Flow<List<FavoritoEntity>> = callbackFlow {
-        val subscription = favoritosCollection
+        if (uid.isEmpty()) {
+            trySend(emptyList())
+            return@callbackFlow
+        }
+        val subscription = collection
             .whereEqualTo("usuarioId", uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -21,32 +25,44 @@ class FavoritoRepository {
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    trySend(snapshot.toObjects(FavoritoEntity::class.java))
+                    val favs = snapshot.toObjects(FavoritoEntity::class.java)
+                    trySend(favs)
                 }
             }
         awaitClose { subscription.remove() }
     }
 
-    /** Agrega o quita un producto de favoritos */
+    /** Agrega o quita un producto de favoritos en Firestore */
     suspend fun toggleFavorito(uid: String, nombreProducto: String) {
-        val docId = "${uid}_${nombreProducto}"
-        val docRef = favoritosCollection.document(docId)
-        val snapshot = docRef.get().await()
+        if (uid.isEmpty()) return
+        
+        val snapshot = collection
+            .whereEqualTo("usuarioId", uid)
+            .whereEqualTo("nombreProducto", nombreProducto)
+            .get()
+            .await()
 
-        if (snapshot.exists()) {
-            docRef.delete().await()
+        if (!snapshot.isEmpty) {
+            // Ya existe, lo quitamos
+            for (doc in snapshot.documents) {
+                collection.document(doc.id).delete().await()
+            }
         } else {
-            docRef.set(FavoritoEntity(uid, nombreProducto)).await()
+            // No existe, lo agregamos
+            val docRef = collection.document()
+            val newFav = FavoritoEntity(usuarioId = uid, nombreProducto = nombreProducto)
+            docRef.set(newFav).await()
         }
     }
 
-    /** Verifica si un producto es favorito (vía get rápido) */
+    /** Verifica si un producto es favorito (vía consulta simple) */
     suspend fun esFavorito(uid: String, nombreProducto: String): Boolean {
-        val docId = "${uid}_${nombreProducto}"
-        return try {
-            favoritosCollection.document(docId).get().await().exists()
-        } catch (e: Exception) {
-            false
-        }
+        if (uid.isEmpty()) return false
+        val snapshot = collection
+            .whereEqualTo("usuarioId", uid)
+            .whereEqualTo("nombreProducto", nombreProducto)
+            .get()
+            .await()
+        return !snapshot.isEmpty
     }
 }

@@ -1,6 +1,5 @@
 package com.example.cestaOganicaIA.viewmodel
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,12 +15,10 @@ class HistorialViewModel(
     val pedidos: StateFlow<List<PedidoEntity>> = _pedidos.asStateFlow()
 
     fun cargarPedidos(uid: String) {
-        pedidoRepo.pedidosDeUsuario(uid)
+        pedidoRepo.obtenerPorUsuario(uid)
             .onEach { _pedidos.value = it }
             .launchIn(viewModelScope)
     }
-
-    // ── Factory ──────────────────────────────────────────────────────────────
 
     class Factory(private val repo: PedidoRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

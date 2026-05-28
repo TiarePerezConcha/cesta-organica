@@ -4,23 +4,24 @@ import com.example.cestaOganicaIA.data.model.Resena
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 object ResenaRepository {
     // Lista en memoria para guardar las reseñas.
     private val resenas = mutableListOf(
         Resena(
-            id = 1,
+            id = UUID.randomUUID().toString(),
             nombreProducto = "Manzanas Fuji",
-            idUsuario = 2,
+            idUsuario = "user_1",
             nombreUsuario = "Renatto",
             calificacion = 5,
             comentario = "¡Muy frescas y crujientes, las mejores que he probado!",
             fecha = "25/05/2024"
         ),
         Resena(
-            id = 2,
+            id = UUID.randomUUID().toString(),
             nombreProducto = "Manzanas Fuji",
-            idUsuario = 3,
+            idUsuario = "user_2",
             nombreUsuario = "John Doe",
             calificacion = 4,
             comentario = "Buenas, aunque un poco pequeñas. En general, recomendables.",
@@ -28,12 +29,10 @@ object ResenaRepository {
         )
     )
 
-    private var proximoId = resenas.size + 1
-
     // Función para añadir una nueva reseña a la lista
     fun agregarResena(
         nombreProducto: String,
-        idUsuario: Int,
+        idUsuario: String,
         nombreUsuario: String,
         calificacion: Int,
         comentario: String
@@ -43,7 +42,7 @@ object ResenaRepository {
 
         resenas.add(
             Resena(
-                id = proximoId++,
+                id = UUID.randomUUID().toString(),
                 nombreProducto = nombreProducto,
                 idUsuario = idUsuario,
                 nombreUsuario = nombreUsuario,
