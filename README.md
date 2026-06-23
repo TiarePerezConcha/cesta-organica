@@ -74,3 +74,45 @@ La comunicación con Supabase se realiza mediante un cliente HTTP propio (`Supab
 6. Ejecuta la app en un emulador o dispositivo físico desde Android Studio (▶️ Run).
 
 ## 📂 Estructura del proyecto
+app/src/main/java/com/example/cestaOganicaIA/
+
+├── data/
+
+│   ├── database/        # Entidades y configuración de Room
+
+│   ├── dao/              # DAOs de Room (carrito, productos)
+
+│   ├── model/             # Modelos de dominio (Producto, Credential, etc.)
+
+│   ├── remote/           # Cliente HTTP hacia Supabase
+
+│   ├── repository/        # Repositorios (puente entre UI y datos)
+
+│   └── session/          # Gestión de sesión de usuario (reactiva con StateFlow)
+
+├── navigation/            # Definición de rutas y NavHost
+
+├── ui/                    # Pantallas organizadas por módulo (auth, catalog, gestion, etc.)
+
+├── view/                  # Pantallas adicionales (carrito, historial, reseñas, favoritos)
+
+├── viewmodel/             # ViewModels (MVVM)
+
+└── MainActivity.kt
+
+## 🧪 Estado del proyecto
+
+Proyecto desarrollado como parte de la práctica profesional / taller aplicado de programación. Actualmente migrado de Firebase a Supabase como backend principal, con foco en:
+
+- Corrección de estabilidad (manejo de errores de red sin crashear la app).
+- Persistencia y sincronización de catálogo entre dispositivos.
+- Seguridad de credenciales de usuario.
+
+## 👤 Autora
+
+**Tiare Pérez Concha**
+Estudiante de Analista Programador, Duoc UC.
+
+## 📄 Licencia
+
+Proyecto académico, de uso educativo.
