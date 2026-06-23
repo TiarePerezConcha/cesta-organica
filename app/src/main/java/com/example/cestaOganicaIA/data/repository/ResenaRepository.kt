@@ -1,60 +1,57 @@
 package com.example.cestaOganicaIA.data.repository
 
 import com.example.cestaOganicaIA.data.model.Resena
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-object ResenaRepository {
-    // Lista en memoria para guardar las reseñas.
-    private val resenas = mutableListOf(
-        Resena(
-            id = UUID.randomUUID().toString(),
-            nombreProducto = "Manzanas Fuji",
-            idUsuario = "user_1",
-            nombreUsuario = "Renatto",
-            calificacion = 5,
-            comentario = "¡Muy frescas y crujientes, las mejores que he probado!",
-            fecha = "25/05/2024"
-        ),
-        Resena(
-            id = UUID.randomUUID().toString(),
-            nombreProducto = "Manzanas Fuji",
-            idUsuario = "user_2",
-            nombreUsuario = "John Doe",
-            calificacion = 4,
-            comentario = "Buenas, aunque un poco pequeñas. En general, recomendables.",
-            fecha = "26/05/2024"
-        )
-    )
+class ResenaRepository {
+    private val db = FirebaseFirestore.getInstance()
+    private val collection = db.collection("resenas")
 
-    // Función para añadir una nueva reseña a la lista
-    fun agregarResena(
+    /** Obtiene en tiempo real las reseñas de un producto, ordenadas por fecha. */
+    fun obtenerResenasPorProducto(nombreProducto: String): Flow<List<Resena>> = callbackFlow {
+        val subscription = collection
+            .whereEqualTo("nombreProducto", nombreProducto)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val resenas = snapshot.toObjects(Resena::class.java)
+                    trySend(resenas)
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    /** Guarda una nueva reseña en Firestore. */
+    suspend fun agregarResena(
         nombreProducto: String,
         idUsuario: String,
         nombreUsuario: String,
         calificacion: Int,
         comentario: String
     ) {
-        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val fechaActual = sdf.format(Date())
-
-        resenas.add(
-            Resena(
-                id = UUID.randomUUID().toString(),
-                nombreProducto = nombreProducto,
-                idUsuario = idUsuario,
-                nombreUsuario = nombreUsuario,
-                calificacion = calificacion,
-                comentario = comentario,
-                fecha = fechaActual
-            )
+        val docRef = collection.document()
+        val fechaActual = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+        val resena = Resena(
+            id = docRef.id,
+            nombreProducto = nombreProducto,
+            idUsuario = idUsuario,
+            nombreUsuario = nombreUsuario,
+            calificacion = calificacion,
+            comentario = comentario,
+            fecha = fechaActual
         )
-    }
-
-    // Función para obtener todas las reseñas de un producto específico
-    fun obtenerResenasPorProducto(nombreProducto: String): List<Resena> {
-        return resenas.filter { it.nombreProducto.equals(nombreProducto, ignoreCase = true) }
+        docRef.set(resena).await()
     }
 }

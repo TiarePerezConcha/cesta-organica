@@ -1,20 +1,28 @@
 package com.example.cestaOganicaIA.data.session
 
 import com.example.cestaOganicaIA.data.model.Credential
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object SessionManager {
-    var currentUser: Credential? = null
+
+    private val _currentUserFlow = MutableStateFlow<Credential?>(null)
+    val currentUserFlow: StateFlow<Credential?> = _currentUserFlow.asStateFlow()
+
+    /** Acceso directo no reactivo, para usar dentro de funciones suspend o lógica fuera de Compose. */
+    val currentUser: Credential? get() = _currentUserFlow.value
 
     fun login(user: Credential) {
-        currentUser = user
+        _currentUserFlow.value = user
     }
 
     fun logout() {
-        currentUser = null
+        _currentUserFlow.value = null
     }
 
     fun updateCurrent(user: Credential) {
-        currentUser = user
+        _currentUserFlow.value = user
     }
 
     val isLoggedIn: Boolean get() = currentUser != null

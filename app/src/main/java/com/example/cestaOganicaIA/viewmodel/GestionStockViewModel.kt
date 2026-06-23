@@ -16,6 +16,10 @@ class GestionStockViewModel(private val repository: ProductoRepository) : ViewMo
     val productos: StateFlow<List<Producto>> = repository.obtenerProductos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    init {
+        viewModelScope.launch { repository.refrescar() }
+    }
+
     fun preCargarProductos() {
         viewModelScope.launch {
             val iniciales = listOf(

@@ -1,93 +1,125 @@
 package com.example.cestaOganicaIA.data.repository
 
 import com.example.cestaOganicaIA.data.model.Credential
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
+import com.example.cestaOganicaIA.data.remote.SupabaseClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.util.UUID
 
 class UserRepository {
 
-    private val auth = FirebaseAuth.getInstance()
-    private val db = FirebaseFirestore.getInstance()
-    private val collection = db.collection("usuarios")
-
     private fun norm(s: String) = s.trim().lowercase()
 
-    // Registro en Firebase
-    suspend fun register(user: Credential): Result<Credential> {
-        return try {
-            // 1. Crear usuario en Firebase Auth
-            val authResult = auth.createUserWithEmailAndPassword(user.correo, user.password).await()
-            val uid = authResult.user?.uid ?: return Result.failure(Exception("No se pudo obtener el UID"))
+    /** Convierte una fila JSON de Supabase en un Credential. */
+    private fun JSONObject.toCredential(): Credential = Credential(
+        uid = optString("uid", ""),
+        nombre = optString("nombre", ""),
+        correo = optString("correo", ""),
+        usuario = optString("usuario", ""),
+        telefono = optString("telefono", ""),
+        direccion = optString("direccion", ""),
+        password = optString("password", ""),
+        rol = optString("rol", "user")
+    )
 
-            // 2. Guardar datos adicionales en Firestore
-            val userWithUid = user.copy(uid = uid, password = "") // No guardamos la clave en Firestore por seguridad
-            collection.document(uid).set(userWithUid).await()
-
-            Result.success(userWithUid)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // Login en Firebase
-    suspend fun login(usernameOrEmail: String, password: String): Result<Credential> {
-        return try {
-            // Si es un correo, intentamos login directo
-            val email = if (usernameOrEmail.contains("@")) {
-                usernameOrEmail
-            } else {
-                // Si es un nombre de usuario, debemos buscar el correo en Firestore primero
-                val snapshot = collection.whereEqualTo("usuario", usernameOrEmail).get().await()
-                if (snapshot.isEmpty) return Result.failure(Exception("Usuario no encontrado"))
-                snapshot.documents.first().getString("correo") ?: return Result.failure(Exception("Correo no encontrado"))
+    /** Registro de usuario nuevo en la tabla "usuarios" de Supabase. */
+    suspend fun register(user: Credential): Result<Credential> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar si el correo ya existe
+            val existing = SupabaseClient.select(
+                "usuarios",
+                "correo=eq.${SupabaseClient.encode(norm(user.correo))}"
+            )
+            if (existing.length() > 0) {
+                return@withContext Result.failure(Exception("El correo ya está registrado"))
             }
 
-            val authResult = auth.signInWithEmailAndPassword(email, password).await()
-            val uid = authResult.user?.uid ?: return Result.failure(Exception("Login fallido"))
+            val nuevoUid = UUID.randomUUID().toString()
+            val body = JSONObject().apply {
+                put("uid", nuevoUid)
+                put("nombre", user.nombre)
+                put("correo", norm(user.correo))
+                put("usuario", user.usuario)
+                put("telefono", user.telefono)
+                put("direccion", user.direccion)
+                put("password", user.password)
+                put("rol", user.rol)
+            }
 
-            // Obtener datos del perfil desde Firestore
-            val doc = collection.document(uid).get().await()
-            val userData = doc.toObject(Credential::class.java) ?: return Result.failure(Exception("Datos de usuario no encontrados"))
-            
-            Result.success(userData)
+            val created = SupabaseClient.insert("usuarios", body)
+            Result.success(created.toCredential())
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Obtener todos los usuarios de Firestore
-    suspend fun getAllUsers(): List<Credential> {
-        return try {
-            val snapshot = collection.get().await()
-            snapshot.toObjects(Credential::class.java)
+    /** Login: busca por correo o nombre de usuario, valida contraseña. */
+    suspend fun login(usernameOrEmail: String, password: String): Result<Credential> = withContext(Dispatchers.IO) {
+        try {
+            val campo = if (usernameOrEmail.contains("@")) "correo" else "usuario"
+            val valor = norm(usernameOrEmail)
+
+            val resultados = SupabaseClient.select(
+                "usuarios",
+                "$campo=eq.${SupabaseClient.encode(valor)}"
+            )
+
+            if (resultados.length() == 0) {
+                return@withContext Result.failure(Exception("Usuario no encontrado"))
+            }
+
+            val userJson = resultados.getJSONObject(0)
+            val credential = userJson.toCredential()
+
+            if (credential.password != password) {
+                return@withContext Result.failure(Exception("Contraseña incorrecta"))
+            }
+
+            Result.success(credential)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Obtiene todos los usuarios (para el panel de administración). */
+    suspend fun getAllUsers(): List<Credential> = withContext(Dispatchers.IO) {
+        try {
+            val resultados = SupabaseClient.select("usuarios")
+            (0 until resultados.length()).map { i ->
+                resultados.getJSONObject(i).toCredential()
+            }
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    // Actualizar perfil en Firestore
-    suspend fun updateProfile(uid: String, nombre: String, telefono: String, direccion: String): Result<Credential> {
-        return try {
-            val updates = mapOf(
-                "nombre" to nombre,
-                "telefono" to telefono,
-                "direccion" to direccion
-            )
-            collection.document(uid).update(updates).await()
-            
-            val doc = collection.document(uid).get().await()
-            val updated = doc.toObject(Credential::class.java) ?: return Result.failure(Exception("Error al recargar datos"))
-            Result.success(updated)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    /** Actualiza nombre, teléfono y dirección del usuario. */
+    suspend fun updateProfile(uid: String, nombre: String, telefono: String, direccion: String): Result<Credential> =
+        withContext(Dispatchers.IO) {
+            try {
+                val updates = JSONObject().apply {
+                    put("nombre", nombre)
+                    put("telefono", telefono)
+                    put("direccion", direccion)
+                }
+                SupabaseClient.update("usuarios", "uid=eq.${SupabaseClient.encode(uid)}", updates)
 
-    suspend fun getById(uid: String): Credential? {
-        return try {
-            val doc = collection.document(uid).get().await()
-            doc.toObject(Credential::class.java)
+                val resultados = SupabaseClient.select("usuarios", "uid=eq.${SupabaseClient.encode(uid)}")
+                if (resultados.length() == 0) {
+                    return@withContext Result.failure(Exception("Error al recargar datos"))
+                }
+                Result.success(resultados.getJSONObject(0).toCredential())
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** Obtiene un usuario por su uid. */
+    suspend fun getById(uid: String): Credential? = withContext(Dispatchers.IO) {
+        try {
+            val resultados = SupabaseClient.select("usuarios", "uid=eq.${SupabaseClient.encode(uid)}")
+            if (resultados.length() == 0) null else resultados.getJSONObject(0).toCredential()
         } catch (e: Exception) {
             null
         }

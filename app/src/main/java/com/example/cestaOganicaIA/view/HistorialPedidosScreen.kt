@@ -1,5 +1,6 @@
 package com.example.cestaOganicaIA.view
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,7 @@ import com.example.cestaOganicaIA.ui.shared.HuertoScaffold
 import com.example.cestaOganicaIA.ui.shared.HuertoHogarTheme
 import com.example.cestaOganicaIA.viewmodel.HistorialViewModel
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
@@ -30,13 +32,26 @@ fun HistorialPedidosScreen(
     val uid = user?.uid ?: "INVITADO"
     val pedidos by viewModel.pedidos.collectAsState()
 
+    var ordenSeleccionada by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(uid) {
         viewModel.cargarPedidos(uid)
     }
 
-    // Agrupar pedidos por ordenId
-    val pedidosAgrupados = remember(pedidos) {
+    val formatoFecha = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    fun parsearFecha(fecha: String): Long = try {
+        formatoFecha.parse(fecha)?.time ?: 0L
+    } catch (e: Exception) { 0L }
+
+    // Agrupar pedidos por ordenId, preservando el orden por fecha real (más reciente primero)
+    val ordenesOrdenadas = remember(pedidos) {
         pedidos.groupBy { it.ordenId }
+            .toList()
+            .sortedByDescending { (_, items) -> parsearFecha(items.first().fechaPedido) }
+    }
+
+    val ordenParaDetalle = ordenSeleccionada?.let { id ->
+        ordenesOrdenadas.find { it.first == id }
     }
 
     HuertoHogarTheme {
@@ -61,24 +76,35 @@ fun HistorialPedidosScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(pedidosAgrupados.keys.toList()) { ordenId ->
-                        val itemsDeOrden = pedidosAgrupados[ordenId] ?: emptyList()
-                        OrdenCard(ordenId, itemsDeOrden)
+                    items(ordenesOrdenadas) { (ordenId, itemsDeOrden) ->
+                        OrdenCard(
+                            ordenId = ordenId,
+                            items = itemsDeOrden,
+                            onClick = { ordenSeleccionada = ordenId }
+                        )
                     }
                 }
             }
         }
     }
+
+    if (ordenParaDetalle != null) {
+        DetallePedidoDialog(
+            ordenId = ordenParaDetalle.first,
+            items = ordenParaDetalle.second,
+            onDismiss = { ordenSeleccionada = null }
+        )
+    }
 }
 
 @Composable
-private fun OrdenCard(ordenId: String, items: List<PedidoEntity>) {
+private fun OrdenCard(ordenId: String, items: List<PedidoEntity>, onClick: () -> Unit) {
     val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
     val primerPedido = items.first()
     val totalOrden = items.sumOf { it.total }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(2.dp),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -87,29 +113,102 @@ private fun OrdenCard(ordenId: String, items: List<PedidoEntity>) {
                 Text("Orden #$ordenId", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(primerPedido.fechaPedido, style = MaterialTheme.typography.bodySmall)
             }
-            
+
             Spacer(Modifier.height(8.dp))
-            
+
             Text("Productos:", fontWeight = FontWeight.SemiBold)
             items.forEach { item ->
                 Text("• ${item.nombreProducto} (x${item.cantidad}) - ${formatoMoneda.format(item.total)}")
             }
-            
+
             Spacer(Modifier.height(8.dp))
-            
+
             Text("Estado: ${primerPedido.estado}", color = when(primerPedido.estado) {
                 "Confirmado" -> Color.Blue
                 "En Camino" -> Color(0xFFFFA500)
                 "Entregado" -> Color(0xFF4CAF50)
                 else -> Color.Gray
             }, fontWeight = FontWeight.Bold)
-            
+
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Total de la compra:", fontWeight = FontWeight.Bold)
                 Text(formatoMoneda.format(totalOrden), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
             }
+
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Toca para ver el detalle",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.End)
+            )
         }
+    }
+}
+
+@Composable
+private fun DetallePedidoDialog(ordenId: String, items: List<PedidoEntity>, onDismiss: () -> Unit) {
+    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
+    val primerPedido = items.first()
+    val totalOrden = items.sumOf { it.total }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalle del Pedido #$ordenId") },
+        text = {
+            Column {
+                DetalleSeccion(titulo = "Fecha del pedido", valor = primerPedido.fechaPedido)
+                DetalleSeccion(titulo = "Fecha de entrega", valor = primerPedido.fechaEntrega)
+                DetalleSeccion(titulo = "Estado", valor = primerPedido.estado)
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                Text("Datos de Contacto", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                DetalleSeccion(titulo = "Nombre", valor = primerPedido.nombreContacto)
+                DetalleSeccion(titulo = "Correo", valor = primerPedido.correoContacto)
+                DetalleSeccion(titulo = "Teléfono", valor = primerPedido.telefonoContacto)
+                DetalleSeccion(titulo = "Dirección de entrega", valor = primerPedido.direccionEntrega)
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                Text("Productos", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                items.forEach { item ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${item.nombreProducto} (x${item.cantidad})")
+                        Text(formatoMoneda.format(item.total))
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Total:", fontWeight = FontWeight.Bold)
+                    Text(
+                        formatoMoneda.format(totalOrden),
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+@Composable
+private fun DetalleSeccion(titulo: String, valor: String) {
+    Column(Modifier.padding(vertical = 2.dp)) {
+        Text(titulo, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Text(
+            if (valor.isBlank()) "No especificado" else valor,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

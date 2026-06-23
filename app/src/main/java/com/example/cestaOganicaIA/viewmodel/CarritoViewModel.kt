@@ -35,43 +35,72 @@ class CarritoViewModel(
     private val _pedidoConfirmado = MutableStateFlow(false)
     val pedidoConfirmado: StateFlow<Boolean> = _pedidoConfirmado.asStateFlow()
 
+    // NUEVO: estado de error para mostrar al usuario en vez de crashear
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    // NUEVO: estado de carga mientras se confirma el pedido
+    private val _procesandoPago = MutableStateFlow(false)
+    val procesandoPago: StateFlow<Boolean> = _procesandoPago.asStateFlow()
+
+    fun limpiarError() { _error.value = null }
+
     fun cargarCarrito(uid: String) {
         viewModelScope.launch {
-            carritoRepo.itemsDeUsuario(uid).collect { _items.value = it }
+            carritoRepo.itemsDeUsuario(uid)
+                .catch { e -> _error.value = "No se pudo cargar el carrito: ${e.message}" }
+                .collect { _items.value = it }
         }
     }
 
     fun agregarAlCarrito(uid: String, nombre: String, precio: Double, imagenResId: Int, cantidad: Int) {
         viewModelScope.launch {
-            carritoRepo.agregarOActualizar(uid, nombre, precio, imagenResId, cantidad)
+            try {
+                carritoRepo.agregarOActualizar(uid, nombre, precio, imagenResId, cantidad)
+            } catch (e: Exception) {
+                _error.value = "No se pudo agregar el producto: ${e.message}"
+            }
         }
     }
 
     fun cambiarCantidad(uid: String, itemLocalId: Int, nuevaCantidad: Int) {
         viewModelScope.launch {
-            // Buscamos específicamente por el ID único de la base de datos local
-            val item = _items.value.find { it.idLocal == itemLocalId }
-            if (item != null) {
-                if (nuevaCantidad > 0) {
-                    carritoRepo.cambiarCantidad(item, nuevaCantidad)
-                } else {
-                    carritoRepo.eliminarItem(item)
+            try {
+                val item = _items.value.find { it.idLocal == itemLocalId }
+                if (item != null) {
+                    if (nuevaCantidad > 0) {
+                        carritoRepo.cambiarCantidad(item, nuevaCantidad)
+                    } else {
+                        carritoRepo.eliminarItem(item)
+                    }
                 }
+            } catch (e: Exception) {
+                _error.value = "No se pudo actualizar la cantidad: ${e.message}"
             }
         }
     }
 
     fun eliminarItem(uid: String, itemLocalId: Int) {
         viewModelScope.launch {
-            val item = _items.value.find { it.idLocal == itemLocalId }
-            if (item != null) {
-                carritoRepo.eliminarItem(item)
+            try {
+                val item = _items.value.find { it.idLocal == itemLocalId }
+                if (item != null) {
+                    carritoRepo.eliminarItem(item)
+                }
+            } catch (e: Exception) {
+                _error.value = "No se pudo eliminar el producto: ${e.message}"
             }
         }
     }
 
     fun vaciarCarrito(uid: String) {
-        viewModelScope.launch { carritoRepo.vaciarCarrito(uid) }
+        viewModelScope.launch {
+            try {
+                carritoRepo.vaciarCarrito(uid)
+            } catch (e: Exception) {
+                _error.value = "No se pudo vaciar el carrito: ${e.message}"
+            }
+        }
     }
 
     fun confirmarPedido(
@@ -84,34 +113,44 @@ class CarritoViewModel(
         onStockDescontar: (String, Int) -> Unit
     ) {
         viewModelScope.launch {
-            val ordenId = UUID.randomUUID().toString().take(8).uppercase()
-            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            
-            _items.value.forEach { item ->
-                pedidoRepo.confirmarPedido(
-                    PedidoEntity(
-                        ordenId = ordenId,
-                        usuarioId = uid,
-                        nombreContacto = nombre,
-                        correoContacto = correo,
-                        nombreProducto = item.nombreProducto,
-                        precioUnitario = item.precioUnitario.toInt(),
-                        cantidad = item.cantidad,
-                        total = (item.precioUnitario * item.cantidad).toInt(),
-                        imagenResId = item.imagenResId,
-                        fechaEntrega = fechaEntrega,
-                        direccionEntrega = direccion,
-                        fechaPedido = fechaActual,
-                        estado = "Confirmado"
+            _procesandoPago.value = true
+            try {
+                val ordenId = UUID.randomUUID().toString().take(8).uppercase()
+                val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+
+                // Copia local de los items: evita que vaciarCarrito() altere la lista
+                // mientras todavía estamos iterando sobre ella (causa de bugs intermitentes)
+                val itemsAComprar = _items.value.toList()
+
+                itemsAComprar.forEach { item ->
+                    pedidoRepo.confirmarPedido(
+                        PedidoEntity(
+                            ordenId = ordenId,
+                            usuarioId = uid,
+                            nombreContacto = nombre,
+                            correoContacto = correo,
+                            nombreProducto = item.nombreProducto,
+                            precioUnitario = item.precioUnitario.toInt(),
+                            cantidad = item.cantidad,
+                            total = (item.precioUnitario * item.cantidad).toInt(),
+                            imagenResId = item.imagenResId,
+                            fechaEntrega = fechaEntrega,
+                            direccionEntrega = direccion,
+                            fechaPedido = fechaActual,
+                            estado = "Confirmado"
+                        )
                     )
-                )
-                // Descontar de la base de datos Room
-                productoRepo.descontarStock(item.nombreProducto, item.cantidad)
-                // Mantener compatibilidad con el callback si se usa para otros estados en memoria
-                onStockDescontar(item.nombreProducto, item.cantidad)
+                    productoRepo.descontarStock(item.nombreProducto, item.cantidad)
+                    onStockDescontar(item.nombreProducto, item.cantidad)
+                }
+                carritoRepo.vaciarCarrito(uid)
+                _pedidoConfirmado.value = true
+            } catch (e: Exception) {
+                // Antes: esto no se atrapaba y la app se cerraba después de "pagar"
+                _error.value = "No se pudo completar la compra: ${e.message ?: "error desconocido"}"
+            } finally {
+                _procesandoPago.value = false
             }
-            carritoRepo.vaciarCarrito(uid)
-            _pedidoConfirmado.value = true
         }
     }
 
@@ -129,30 +168,36 @@ class CarritoViewModel(
         onStockDescontar: (String, Int) -> Unit
     ) {
         viewModelScope.launch {
-            val ordenId = UUID.randomUUID().toString().take(8).uppercase()
-            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-            
-            pedidoRepo.confirmarPedido(
-                PedidoEntity(
-                    ordenId = ordenId,
-                    usuarioId = uid,
-                    nombreContacto = nombreContacto,
-                    correoContacto = correoContacto,
-                    nombreProducto = nombreProducto,
-                    precioUnitario = precio.toInt(),
-                    cantidad = cantidad,
-                    total = (precio * cantidad).toInt(),
-                    imagenResId = imagenResId,
-                    fechaEntrega = fechaEntrega,
-                    direccionEntrega = direccion,
-                    fechaPedido = fechaActual,
-                    estado = "Confirmado"
+            _procesandoPago.value = true
+            try {
+                val ordenId = UUID.randomUUID().toString().take(8).uppercase()
+                val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+
+                pedidoRepo.confirmarPedido(
+                    PedidoEntity(
+                        ordenId = ordenId,
+                        usuarioId = uid,
+                        nombreContacto = nombreContacto,
+                        correoContacto = correoContacto,
+                        nombreProducto = nombreProducto,
+                        precioUnitario = precio.toInt(),
+                        cantidad = cantidad,
+                        total = (precio * cantidad).toInt(),
+                        imagenResId = imagenResId,
+                        fechaEntrega = fechaEntrega,
+                        direccionEntrega = direccion,
+                        fechaPedido = fechaActual,
+                        estado = "Confirmado"
+                    )
                 )
-            )
-            // Descontar de Room
-            productoRepo.descontarStock(nombreProducto, cantidad)
-            onStockDescontar(nombreProducto, cantidad)
-            _pedidoConfirmado.value = true
+                productoRepo.descontarStock(nombreProducto, cantidad)
+                onStockDescontar(nombreProducto, cantidad)
+                _pedidoConfirmado.value = true
+            } catch (e: Exception) {
+                _error.value = "No se pudo completar la compra: ${e.message ?: "error desconocido"}"
+            } finally {
+                _procesandoPago.value = false
+            }
         }
     }
 

@@ -1,11 +1,14 @@
 package com.example.cestaOganicaIA.ui.shared
 
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cestaOganicaIA.data.session.SessionManager
@@ -19,11 +22,12 @@ fun HuertoScaffold(
     onBack: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val isGuest = SessionManager.isGuest
-    val isAdmin = SessionManager.isAdmin
-    val current = SessionManager.currentUser
+    val current by SessionManager.currentUserFlow.collectAsState()
+    val isGuest = current == null || current?.uid == "INVITADO"
+    val isAdmin = current?.rol == "admin"
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -31,23 +35,24 @@ fun HuertoScaffold(
             ModalDrawerSheet {
                 Spacer(Modifier.height(12.dp))
                 Text(
+                    // Evitamos que falle si 'current' es null usando un texto genérico de respaldo
                     text = if (isGuest) "Menú Invitado" else "Hola, ${current?.nombre ?: "Usuario"}",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
                 HorizontalDivider()
-                
+
                 NavigationDrawerItem(
                     label = { Text("Catálogo") },
                     selected = false,
                     onClick = { scope.launch { drawerState.close() }; navController.navigate(AppRoutes.CATALOGO) },
-                    icon = { Icon(Icons.Default.Storefront, null) }
+                    icon = { Icon(Icons.Default.Store, null) }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Mi perfil") },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
                         if (isGuest) navController.navigate(AppRoutes.REGISTRO)
                         else navController.navigate(AppRoutes.PERFIL)
@@ -65,18 +70,18 @@ fun HuertoScaffold(
                 NavigationDrawerItem(
                     label = { Text("Mis pedidos") },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
                         if (isGuest) navController.navigate(AppRoutes.REGISTRO)
                         else navController.navigate(AppRoutes.HISTORIAL)
                     },
-                    icon = { Icon(Icons.Default.History, null) }
+                    icon = { Icon(Icons.Default.ChangeHistory, null) }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Favoritos") },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
                         if (isGuest) navController.navigate(AppRoutes.REGISTRO)
                         else navController.navigate(AppRoutes.FAVORITOS)
@@ -93,8 +98,8 @@ fun HuertoScaffold(
 
                 if (isAdmin) {
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    Text("Administración", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
-                    
+                    Text("Administration", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
+
                     NavigationDrawerItem(
                         label = { Text("Gestionar usuarios") },
                         selected = false,
@@ -111,13 +116,29 @@ fun HuertoScaffold(
 
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider()
+
                 NavigationDrawerItem(
                     label = { Text("Cerrar sesión") },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        SessionManager.logout()
-                        navController.navigate(AppRoutes.LOGIN) { popUpTo(0) { inclusive = true } }
+                        scope.launch {
+                            // 1. Cerramos el panel lateral de forma asíncrona
+                            drawerState.close()
+
+                            // 2. Borramos los datos en el SessionManager
+                            SessionManager.logout()
+
+                            // 3. REINICIO TOTAL IMPERATIVO:
+                            // Pasamos por alto el bug del backstack recreando el Intent de la app
+                            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                            if (intent != null) {
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                context.startActivity(intent)
+
+                                // Finalizamos la instancia de la actividad actual
+                                (context as? Activity)?.finish()
+                            }
+                        }
                     },
                     icon = { Icon(Icons.Default.Logout, null) }
                 )

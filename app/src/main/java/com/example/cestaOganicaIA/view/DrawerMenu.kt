@@ -30,6 +30,18 @@ fun DrawerMenu(
     navController: NavController,
     viewModel: DrawerMenuViewModel
 ) {
+    // 1. Obtenemos el flujo del usuario actual para monitorear la sesión
+    val currentBySession by SessionManager.currentUserFlow.collectAsState()
+
+    // 2. CORRECCIÓN: Si el usuario pasa a ser null (Logout), redirigimos inmediatamente al Login
+    LaunchedEffect(currentBySession) {
+        if (currentBySession == null) {
+            navController.navigate(AppRoutes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     val categoriasState = viewModel.categorias.value
     var categoriaSeleccionada by remember {
         mutableStateOf<com.example.cestaOganicaIA.data.model.Categoria?>(null)

@@ -52,6 +52,7 @@ class CatalogViewModel(
 
     init {
         observarProductos()
+        viewModelScope.launch { productoRepo.refrescar() }
     }
 
     private fun getIconForCategory(name: String): ImageVector {

@@ -14,11 +14,20 @@ class HistorialViewModel(
     private val _pedidos = MutableStateFlow<List<PedidoEntity>>(emptyList())
     val pedidos: StateFlow<List<PedidoEntity>> = _pedidos.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     fun cargarPedidos(uid: String) {
         pedidoRepo.obtenerPorUsuario(uid)
             .onEach { _pedidos.value = it }
+            .catch { e ->
+                // Antes: un error aquí (sin red, permisos, etc.) tumbaba la app
+                _error.value = e.message ?: "No se pudo cargar el historial"
+            }
             .launchIn(viewModelScope)
     }
+
+    fun limpiarError() { _error.value = null }
 
     class Factory(private val repo: PedidoRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

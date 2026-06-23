@@ -53,7 +53,7 @@ fun AppNav() {
     val db = AppDatabase.getInstance(context)
     
     val carritoRepo = CarritoRepository(db.carritoDao())
-    val productoRepo = ProductoRepository(db.productoDao())
+    val productoRepo = ProductoRepository()
     
     // Repositorios que ahora usan Firebase exclusivamente
     val pedidoRepo = PedidoRepository()

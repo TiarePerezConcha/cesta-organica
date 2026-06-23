@@ -17,8 +17,7 @@ import kotlinx.coroutines.launch
 class AdminViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getInstance(application)
     private val pedidoDao = database.pedidoDao()
-    private val productoDao = database.productoDao()
-    private val productoRepo = ProductoRepository(productoDao)
+    private val productoRepo = ProductoRepository()
 
     val todosPedidos: StateFlow<List<PedidoEntity>> = pedidoDao.obtenerTodos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -30,7 +29,7 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Agrega un producto manualmente a la BBDD local */
+    /** Agrega un producto manualmente */
     fun agregarProductoManual(producto: Producto) {
         viewModelScope.launch {
             productoRepo.insertarProducto(producto)
@@ -50,6 +49,6 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Gestión de usuarios */
     fun refrescarUsuarios() {
-        // Implementar carga desde Firebase si es necesario
+        // Implementar carga desde Supabase si es necesario
     }
 }
